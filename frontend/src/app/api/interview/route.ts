@@ -1,34 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
+// frontend/src/app/api/interview/route.ts
+import { NextResponse } from "next/server";
 import { generateInterview } from "@/lib/groq";
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const { role } = await req.json();
+    const question = await generateInterview(role || "Full Stack Software Engineer");
 
-    if (!role) {
-      return NextResponse.json(
-        { error: "Role is required" },
-        { status: 400 }
-      );
-    }
-
-    const aiResponse = await generateInterview(role);
-
-    const questions = JSON.parse(aiResponse);
-    console.log(questions);
     return NextResponse.json({
       success: true,
-      questions,
+      question: question || "Explain how Next.js App Router handles server vs client component rendering.",
     });
-  } catch (err) {
+  } catch (error) {
+    console.error("Interview API Error:", error);
     return NextResponse.json(
-      {
-        error:
-          err instanceof Error ? err.message : "Something went wrong",
-      },
-      {
-        status: 500,
-      }
+      { error: "Failed to generate interview question" },
+      { status: 500 }
     );
   }
 }

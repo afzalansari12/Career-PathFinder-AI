@@ -1,149 +1,195 @@
+// frontend/src/app/dashboard/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
+interface ResumeData {
+  score?: number;
+  summary?: string;
+  skills?: string[];
+}
+
+interface RoadmapData {
+  careerGoal?: string;
+  estimatedTime?: string;
+  steps?: string[];
+}
 
 export default function DashboardPage() {
-    const { user, isLoaded } = useUser();
-
-  const [resume, setResume] = useState<any>(null);
-  const [roadmap, setRoadmap] = useState<any>(null);
+  const { user, isLoaded } = useUser();
+  const [resume, setResume] = useState<ResumeData | null>(null);
+  const [roadmap, setRoadmap] = useState<RoadmapData | null>(null);
+  const [jobs, setJobs] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [interviewScore, setInterviewScore] = useState<number | string>("--");
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!user) return;
-  
-    console.log("User:", user.id);
-  
+    if (!isLoaded || !user) return;
+
     const fetchData = async () => {
       try {
-        console.log("Fetching dashboard...");
-  
+        setLoading(true);
+
+        // 1. Fetch Resume Analysis
         const resumeRes = await fetch(`/api/resume?userId=${user.id}`);
-        const resumeData = await resumeRes.json();
-  
-        console.log("Resume:", resumeData);
-  
-        if (resumeData.success) {
-          setResume(resumeData.data);
+        if (resumeRes.ok) {
+          const resumeData = await resumeRes.json();
+          if (resumeData.success) {
+            setResume(resumeData.data || resumeData);
+          }
         }
-  
+
+        // 2. Fetch Career Roadmap
         const roadmapRes = await fetch(`/api/roadmap?userId=${user.id}`);
-        const roadmapData = await roadmapRes.json();
-  
-        console.log("Roadmap:", roadmapData);
-  
-        if (roadmapData.success) {
-          setRoadmap(roadmapData.roadmap);
+        if (roadmapRes.ok) {
+          const roadmapData = await roadmapRes.json();
+          if (roadmapData.success) {
+            setRoadmap(roadmapData.roadmap || roadmapData);
+          }
+        }
+
+        // 3. Fetch Job Recommendations
+        const jobsRes = await fetch(`/api/jobs?userId=${user.id}`);
+        if (jobsRes.ok) {
+          const jobsData = await jobsRes.json();
+
+          if (jobsData.success) {
+            setJobs(jobsData.recommendedJobs || []);
+          } 
+        }
+        // 4. Fetch Interview Readiness Score
+        const interviewRes = await fetch(`/api/interview/evaluate?userId=${user.id}`);
+        if (interviewRes.ok) {
+          const interviewData = await interviewRes.json();
+          if (interviewData.score) {
+            setInterviewScore(interviewData.score);
+          }
         }
       } catch (err) {
-        console.error(err);
+        console.error("Dashboard fetch error:", err);
       } finally {
         setLoading(false);
       }
     };
-  
+
     fetchData();
   }, [isLoaded, user]);
 
-  if (loading) {
+  if (!isLoaded || loading) {
     return (
-      <div className="p-10 text-center text-xl">
-        Loading Dashboard...
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <p className="text-muted-foreground animate-pulse">Loading dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-8">
-      <div className="mb-10">
-        <h1 className="text-4xl font-bold">
-          Welcome Back 👋
+    <div className="p-8 max-w-7xl mx-auto space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Welcome Back {user?.firstName ? `, ${user.firstName}` : ""} 👋
         </h1>
-
-        <p className="text-muted-foreground mt-2">
+        <p className="text-muted-foreground mt-1">
           Let's build your dream career with AI.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      {/* Primary KPI Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Resume Score</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-emerald-600">
+              {resume?.score ?? "--"}
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Resume Score */}
-        <div className="rounded-xl border p-6 shadow-sm">
-          <h2 className="font-semibold text-gray-600">
-            Resume Score
-          </h2>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Recommended Jobs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {jobs.length > 0 ? jobs.length : "--"}
+            </div>
+          </CardContent>
+        </Card>
 
-          <p className="text-4xl mt-4 font-bold text-green-600">
-            {resume?.analysis?.ats_score ?? "--"}
-          </p>
-        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Roadmap Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-blue-600">
+              {roadmap?.careerGoal ? "Generated" : "--"}
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Recommended Jobs */}
-        <div className="rounded-xl border p-6 shadow-sm">
-          <h2 className="font-semibold text-gray-600">
-            Recommended Jobs
-          </h2>
-
-          <p className="text-4xl mt-4 font-bold">
-            --
-          </p>
-        </div>
-
-        {/* Roadmap */}
-        <div className="rounded-xl border p-6 shadow-sm">
-          <h2 className="font-semibold text-gray-600">
-            Roadmap
-          </h2>
-
-          <p className="text-4xl mt-4 font-bold text-blue-600">
-            {roadmap ? "Generated" : "Pending"}
-          </p>
-        </div>
-
-        {/* Interview */}
-        <div className="rounded-xl border p-6 shadow-sm">
-          <h2 className="font-semibold text-gray-600">
-            Interview Score
-          </h2>
-
-          <p className="text-4xl mt-4 font-bold text-purple-600">
-            --
-          </p>
-        </div>
-
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Interview Readiness</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-purple-600">--</div>
+          </CardContent>
+        </Card>
       </div>
 
-      {resume?.analysis && (
-        <div className="mt-10 rounded-xl border p-6 shadow-sm">
-          <h2 className="text-2xl font-bold mb-4">
-            Resume Summary
-          </h2>
+      {/* Main Analysis Cards */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Resume Summary */}
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle>Resume Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground text-sm">
+              {resume?.summary || "No resume uploaded yet. Upload your resume to see your analysis."}
+            </p>
+            {!resume?.summary && (
+              <Button className="mt-2">
+                <Link href="/upload">Upload Resume</Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
 
-          <p>{resume.analysis.summary}</p>
-        </div>
-      )}
-
-      {roadmap && (
-        <div className="mt-10 rounded-xl border p-6 shadow-sm">
-          <h2 className="text-2xl font-bold mb-6">
-            Career Roadmap
-          </h2>
-
-          <h3 className="text-xl font-semibold">
-            {roadmap.title}
-          </h3>
-
-          <p className="mt-2">
-            <strong>Career Goal:</strong> {roadmap.career_goal}
-          </p>
-
-          <p>
-            <strong>Estimated Time:</strong> {roadmap.estimated_time}
-          </p>
-        </div>
-      )}
+        {/* Career Roadmap */}
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle>Career Roadmap</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <span className="font-semibold text-sm">Career Goal: </span>
+              <span className="text-sm text-muted-foreground">
+                {roadmap?.careerGoal || "--"}
+              </span>
+            </div>
+            <div>
+              <span className="font-semibold text-sm">Estimated Time: </span>
+              <span className="text-sm text-muted-foreground">
+                {roadmap?.estimatedTime || "--"}
+              </span>
+            </div>
+            {roadmap?.steps && roadmap.steps.length > 0 && (
+              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 mt-2">
+                {roadmap.steps.map((step, idx) => (
+                  <li key={idx}>{step}</li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

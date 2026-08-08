@@ -1,75 +1,25 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+// frontend/src/app/api/jobs/route.ts
+import { NextResponse } from "next/server";
 import { generateJobs } from "@/lib/groq";
+import { latestResumeAnalysis } from "@/app/api/resume/route";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-export async function GET(req: NextRequest) {
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      );
-    }
-
-    // Get latest resume analysis
-    const { data: resume, error } = await supabase
-      .from("resume_analysis")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
-    }
-
-    if (!resume) {
-      return NextResponse.json(
-        { error: "Resume analysis not found" },
-        { status: 404 }
-      );
-    }
-
-    // Generate jobs
-    const aiResponse = await generateJobs(resume.analysis);
-
-    let jobs;
-
+    const skills = latestResumeAnalysis?.skills?.technical || ["Next.js", "TypeScript", "React"];
+    const rawResult = await generateJobs(skills);
+    
+    let parsed: any = {};
     try {
-      jobs = JSON.parse(aiResponse);
+      parsed = typeof rawResult === "string" ? JSON.parse(rawResult) : rawResult;
     } catch {
-      return NextResponse.json(
-        { error: "Invalid AI response" },
-        { status: 500 }
-      );
+      parsed = {};
     }
 
     return NextResponse.json({
       success: true,
-      jobs: jobs.jobs,
+      recommendedJobs: parsed.recommendedJobs || ["Full Stack Developer", "Frontend Engineer", "Node.js Developer"],
     });
-  } catch (err) {
-    return NextResponse.json(
-      {
-        error:
-          err instanceof Error ? err.message : "Something went wrong",
-      },
-      {
-        status: 500,
-      }
-    );
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to load jobs" }, { status: 500 });
   }
 }

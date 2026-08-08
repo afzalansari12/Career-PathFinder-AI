@@ -1,114 +1,44 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+// frontend/src/app/api/upload/route.ts
+import { NextResponse } from "next/server";
 import { extractPdfText } from "@/lib/pdf";
 import { analyzeResume } from "@/lib/groq";
+import { setLatestAnalysis } from "@/app/api/resume/route";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-
     const file = formData.get("file") as File;
-    const userId = formData.get("userId") as string;
 
     if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // 1. Extract raw text from PDF
+    const resumeText = await extractPdfText(buffer);
+
+    if (!resumeText || resumeText.trim().length === 0) {
       return NextResponse.json(
-        { error: "No file uploaded" },
+        { error: "Could not extract text from PDF. Ensure file is not scanned/image-only." },
         { status: 400 }
       );
     }
 
-    // Extract text from PDF
-    const resumeText = await extractPdfText(file);
+    // 2. Perform deep ATS evaluation using Groq
+    const analysis = await analyzeResume(resumeText);
+    setLatestAnalysis(analysis);
 
-    console.log("========== RESUME ==========");
-    console.log(resumeText);
-    console.log("============================");
-
-    // Analyze resume using Groq
-    const aiResponse = await analyzeResume(resumeText);
-
-    let analysis;
-
-    try {
-      analysis = JSON.parse(aiResponse);
-    } catch (err) {
-      console.error("Invalid AI JSON:");
-      console.error(aiResponse);
-
-      return NextResponse.json(
-        {
-          error: "AI returned invalid JSON",
-          raw: aiResponse,
-        },
-        { status: 500 }
-      );
-    }
-
-    console.log("========== AI ANALYSIS ==========");
-    console.log(analysis);
-    console.log("=================================");
-
-    // Upload PDF to Supabase Storage
-    const fileName = userId
-      ? `${userId}/${Date.now()}-${file.name}`
-      : `${Date.now()}-${file.name}`;
-
-    const { error } = await supabase.storage
-      .from("resumes")
-      .upload(fileName, file, {
-        upsert: true,
-      });
-
-    if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
-    }
-    const { data, error: dbError } = await supabase
-    .from("resume_analysis")
-    .insert({
-      user_id: userId || null,
-      resume_url: fileName,
-      analysis,
-    })
-    .select();
-  
-  console.log("Inserted Data:", data);
-  console.log("Database Error:", dbError);
-
- if (dbError) {
-  console.error("Database Error:", dbError);
-
-  return NextResponse.json(
-    {
-      error: dbError.message,
-    },
-    {
-      status: 500,
-    }
-  );
-}
-console.log("✅ Resume analysis saved to database");
- 
     return NextResponse.json({
       success: true,
-      fileName,
-      resumeText,
+      text: resumeText,
       analysis,
     });
-  } catch (err) {
-    console.error(err);
-
+  } catch (error: unknown) {
+    console.error("Upload route error:", error);
     return NextResponse.json(
-      {
-        error: err instanceof Error ? err.message : "Upload failed",
-      },
+      { error: error instanceof Error ? error.message : "Failed to analyze resume" },
       { status: 500 }
     );
   }
