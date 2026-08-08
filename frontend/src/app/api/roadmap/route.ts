@@ -1,52 +1,77 @@
 // frontend/src/app/api/roadmap/route.ts
-import { NextResponse } from "next/server";
-import { generateRoadmap } from "@/lib/groq";
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
-export async function GET(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    return NextResponse.json({
-      success: true,
-      roadmap: {
-        careerGoal: "Full Stack Software Engineer",
-        estimatedTime: "3-6 months",
-        steps: [
-          "Master TypeScript & Next.js App Router",
-          "Implement Supabase Auth & Database",
-          "Deploy & Optimize Performance",
-        ],
+    const { targetRole, currentSkills } = await req.json();
+
+    const prompt = `
+      You are an elite Tech Career Coach and Engineering Director.
+      Target Role: "${targetRole || "Full Stack Developer"}"
+      Current Candidate Skills: "${currentSkills || "JavaScript, HTML, CSS"}"
+
+      Generate a structured 4-phase learning roadmap to bridge the candidate's skill gap.
+
+      Return strictly valid JSON with this exact structure:
+      {
+        "role": "${targetRole}",
+        "estimatedTime": "12 Weeks",
+        "phases": [
+          {
+            "phaseNumber": 1,
+            "title": "Core Foundation & Deep Dive",
+            "duration": "Weeks 1-3",
+            "topics": ["Advanced TypeScript", "State Management", "Next.js App Router"],
+            "projectIdea": "Build a real-time collaborative dashboard."
+          },
+          {
+            "phaseNumber": 2,
+            "title": "Backend Architecture & APIs",
+            "duration": "Weeks 4-6",
+            "topics": ["PostgreSQL & Supabase", "REST & GraphQL", "Authentication & Middleware"],
+            "projectIdea": "Implement full auth with RBAC and database row-level security."
+          }
+        ]
+      }
+    `;
+
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
       },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      }),
     });
-  } catch (error) {
-    console.error("Roadmap GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch roadmap" }, { status: 500 });
-  }
-}
 
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const rawResult = await generateRoadmap(body.skills || body.analysis, body.targetRole);
+    const groqData = await groqRes.json();
+    const result = JSON.parse(groqData.choices[0]?.message?.content || "{}");
 
-    let parsedData: any = {};
-    try {
-      parsedData = typeof rawResult === "string" ? JSON.parse(rawResult) : rawResult;
-    } catch {
-      parsedData = {};
+    // Optional: Save generated roadmap to Supabase
+    if (user?.id) {
+      await supabase.from("roadmaps").insert([
+        {
+          user_id: user.id,
+          target_role: targetRole,
+          roadmap_data: result,
+        },
+      ]);
     }
 
-    return NextResponse.json({
-      success: true,
-      roadmap: {
-        careerGoal: parsedData.careerGoal || "Software Engineer",
-        estimatedTime: parsedData.estimatedTime || "3-6 months",
-        steps: parsedData.steps || [],
-      },
-    });
+    return NextResponse.json({ success: true, roadmap: result });
   } catch (error) {
-    console.error("Roadmap POST error:", error);
+    console.error("Roadmap Generation Error:", error);
     return NextResponse.json({ error: "Failed to generate roadmap" }, { status: 500 });
   }
 }
