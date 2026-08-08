@@ -3,190 +3,138 @@
 
 import React, { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
-
-interface ResumeData {
-  score?: number;
-  summary?: string;
-  skills?: string[];
-}
-
-interface RoadmapData {
-  careerGoal?: string;
-  estimatedTime?: string;
-  steps?: string[];
-}
+import InterviewAnalytics from "@/components/InterviewAnalytics";
+import { createClient } from "@/lib/supabase/client";
 
 export default function DashboardPage() {
-  const { user, isLoaded } = useUser();
-  const [resume, setResume] = useState<ResumeData | null>(null);
-  const [roadmap, setRoadmap] = useState<RoadmapData | null>(null);
-  const [jobs, setJobs] = useState<string[]>([]);
+  const { user } = useUser();
+  const router = useRouter();
+
+  const [interviewScore, setInterviewScore] = useState<number | null>(null);
+  const [atsScore, setAtsScore] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [interviewScore, setInterviewScore] = useState<number | string>("--");
 
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (!user?.id) return;
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+    async function loadDashboardMetrics() {
+      setLoading(true);
+      const supabase = createClient();
 
-        // 1. Fetch Resume Analysis
-        const resumeRes = await fetch(`/api/resume?userId=${user.id}`);
-        if (resumeRes.ok) {
-          const resumeData = await resumeRes.json();
-          if (resumeData.success) {
-            setResume(resumeData.data || resumeData);
-          }
-        }
+      // Fetch Latest Interview Score
+      const { data: interviewData } = await supabase
+        .from("interviews")
+        .select("score")
+        .eq("user_id", user?.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-        // 2. Fetch Career Roadmap
-        const roadmapRes = await fetch(`/api/roadmap?userId=${user.id}`);
-        if (roadmapRes.ok) {
-          const roadmapData = await roadmapRes.json();
-          if (roadmapData.success) {
-            setRoadmap(roadmapData.roadmap || roadmapData);
-          }
-        }
+      if (interviewData) setInterviewScore(interviewData.score);
 
-        // 3. Fetch Job Recommendations
-        const jobsRes = await fetch(`/api/jobs?userId=${user.id}`);
-        if (jobsRes.ok) {
-          const jobsData = await jobsRes.json();
+      // Fetch Latest Resume ATS Score
+      const { data: resumeData } = await supabase
+        .from("resumes")
+        .select("ats_score")
+        .eq("user_id", user?.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-          if (jobsData.success) {
-            setJobs(jobsData.recommendedJobs || []);
-          } 
-        }
-        // 4. Fetch Interview Readiness Score
-        const interviewRes = await fetch(`/api/interview/evaluate?userId=${user.id}`);
-        if (interviewRes.ok) {
-          const interviewData = await interviewRes.json();
-          if (interviewData.score) {
-            setInterviewScore(interviewData.score);
-          }
-        }
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+      if (resumeData) setAtsScore(resumeData.ats_score);
 
-    fetchData();
-  }, [isLoaded, user]);
+      setLoading(false);
+    }
 
-  if (!isLoaded || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <p className="text-muted-foreground animate-pulse">Loading dashboard...</p>
-      </div>
-    );
-  }
+    loadDashboardMetrics();
+  }, [user?.id]);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto p-8 space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
-          Welcome Back {user?.firstName ? `, ${user.firstName}` : ""} 👋
+          Welcome back, {user?.firstName || "Candidate"} 👋
         </h1>
         <p className="text-muted-foreground mt-1">
-          Let's build your dream career with AI.
+          Track your AI technical interview progress, ATS score, and tailored skill gap analysis.
         </p>
       </div>
 
-      {/* Primary KPI Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Resume Score</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Mock Interview Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-purple-600">
+              {interviewScore !== null ? `${interviewScore}/100` : "--"}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Based on recent domain questions
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Resume ATS Score
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-emerald-600">
-              {resume?.score ?? "--"}
+              {atsScore !== null ? `${atsScore}/100` : "--"}
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Parsed from uploaded resume
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Recommended Jobs</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Quick Actions
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {jobs.length > 0 ? jobs.length : "--"}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Roadmap Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-600">
-              {roadmap?.careerGoal ? "Generated" : "--"}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Interview Readiness</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-600">--</div>
+          <CardContent className="space-y-2 pt-1">
+            <Button className="w-full" size="sm" onClick={() => router.push("/interview")}>
+              Start Practice Session
+            </Button>
+            <Button className="w-full" variant="outline" size="sm" onClick={() => router.push("/upload")}>
+              Upload / Update Resume
+            </Button>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Analysis Cards */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Resume Summary */}
-        <Card className="col-span-1">
+      {/* Analytics Graph */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <InterviewAnalytics userId={user?.id} />
+        
+        <Card>
           <CardHeader>
-            <CardTitle>Resume Summary</CardTitle>
+            <CardTitle className="text-base font-semibold">Recommended Focus Areas</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground text-sm">
-              {resume?.summary || "No resume uploaded yet. Upload your resume to see your analysis."}
-            </p>
-            {!resume?.summary && (
-              <Button className="mt-2">
-                <Link href="/upload">Upload Resume</Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Career Roadmap */}
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle>Career Roadmap</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <span className="font-semibold text-sm">Career Goal: </span>
-              <span className="text-sm text-muted-foreground">
-                {roadmap?.careerGoal || "--"}
-              </span>
+          <CardContent className="space-y-4 text-sm">
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900">
+              <span className="font-semibold text-blue-900 dark:text-blue-300">System Architecture</span>
+              <p className="text-xs text-blue-800 dark:text-blue-400 mt-1">
+                Practice concurrency, Redis caching layers, and database sharding techniques.
+              </p>
             </div>
-            <div>
-              <span className="font-semibold text-sm">Estimated Time: </span>
-              <span className="text-sm text-muted-foreground">
-                {roadmap?.estimatedTime || "--"}
-              </span>
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-900">
+              <span className="font-semibold text-amber-900 dark:text-amber-300">Data Structures</span>
+              <p className="text-xs text-amber-800 dark:text-amber-400 mt-1">
+                Review Graph traversals, Dynamic Programming, and LRU Cache implementations.
+              </p>
             </div>
-            {roadmap?.steps && roadmap.steps.length > 0 && (
-              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 mt-2">
-                {roadmap.steps.map((step, idx) => (
-                  <li key={idx}>{step}</li>
-                ))}
-              </ul>
-            )}
           </CardContent>
         </Card>
       </div>

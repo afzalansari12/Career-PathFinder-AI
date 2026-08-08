@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 export default function InterviewAnalytics({ userId }: { userId?: string }) {
   const [data, setData] = useState<{ date: string; score: number }[]>([]);
@@ -13,6 +13,7 @@ export default function InterviewAnalytics({ userId }: { userId?: string }) {
     if (!userId) return;
 
     async function fetchScores() {
+      const supabase = createClient();
       const { data: rows } = await supabase
         .from("interviews")
         .select("score, created_at")
@@ -32,7 +33,7 @@ export default function InterviewAnalytics({ userId }: { userId?: string }) {
   }, [userId]);
 
   return (
-    <Card className="col-span-2">
+    <Card className="col-span-1">
       <CardHeader>
         <CardTitle className="text-base font-semibold">Interview Readiness Trajectory</CardTitle>
       </CardHeader>
