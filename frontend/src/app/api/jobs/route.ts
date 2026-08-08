@@ -1,67 +1,111 @@
 // frontend/src/app/api/jobs/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
+
+export interface RealJob {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  applyLink: string;
+  matchScore: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  description: string;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const { role } = await req.json();
+    const { role = "Software Engineer", userSkills = [] } = await req.json();
 
-    const prompt = `
-      You are an automated job-matching engine for top tech talent.
-      Target Domain: "${role || "Full Stack Engineer"}"
+    const rapidApiKey = process.env.RAPIDAPI_KEY;
 
-      Generate 4 realistic startup/tech company job openings tailored to this target domain.
+    // Fallback search if RAPIDAPI_KEY is not configured
+    if (!rapidApiKey) {
+      console.warn("RAPIDAPI_KEY not configured. Querying direct RemoteOK API fallback.");
+      const remoteOkRes = await fetch(`https://remoteok.com/api?tag=${encodeURIComponent(role.toLowerCase())}`);
+      const rawJobs = await remoteOkRes.json();
 
-      Return strictly valid JSON:
+      // Clean array and drop metadata
+      const cleanJobs = (Array.isArray(rawJobs) ? rawJobs.slice(1, 10) : []).map((job: any) => {
+        const jobTags: string[] = job.tags || [];
+        const matched = userSkills.filter((s: string) =>
+          jobTags.some((t) => t.toLowerCase() === s.toLowerCase())
+        );
+        const missing = jobTags.filter(
+          (t) => !userSkills.some((s: string) => s.toLowerCase() === t.toLowerCase())
+        );
+
+        const baseMatch = jobTags.length > 0 ? Math.round((matched.length / jobTags.length) * 100) : 75;
+
+        return {
+          id: String(job.id || Math.random()),
+          title: job.position || role,
+          company: job.company || "Tech Company",
+          location: job.location || "Remote",
+          applyLink: job.url || "https://remoteok.com",
+          matchScore: Math.max(50, Math.min(98, baseMatch)),
+          matchedSkills: matched,
+          missingSkills: missing.slice(0, 5),
+          description: job.description
+            ? job.description.replace(/<[^>]*>?/gm, "").slice(0, 200) + "..."
+            : "No description available.",
+        };
+      });
+
+      return NextResponse.json({ success: true, jobs: cleanJobs });
+    }
+
+    // Primary Execution via JSearch
+    const response = await fetch(
+      `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(
+        role
+      )}&page=1&num_pages=1&remote_jobs_only=true`,
       {
-        "jobs": [
-          {
-            "id": "job-1",
-            "title": "Senior Full Stack Engineer",
-            "company": "Vercel Labs",
-            "location": "Remote / San Francisco",
-            "matchScore": 92,
-            "skillsRequired": ["Next.js", "TypeScript", "Tailwind CSS", "Supabase"],
-            "description": "Building high-performance serverless applications and component systems."
-          },
-          {
-            "id": "job-2",
-            "title": "Backend Systems Developer",
-            "company": "Supabase Infra",
-            "location": "Remote",
-            "matchScore": 85,
-            "skillsRequired": ["PostgreSQL", "Node.js", "Go", "Docker"],
-            "description": "Scaling real-time database infrastructure and authentication pipelines."
-          }
-        ]
+        headers: {
+          "X-RapidAPI-Key": rapidApiKey,
+          "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+        },
       }
-    `;
+    );
 
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0.3,
-      }),
+    const apiData = await response.json();
+    const rawListings = apiData.data || [];
+
+    const processedJobs: RealJob[] = rawListings.map((item: any, idx: number) => {
+      const description = item.job_description || "";
+      
+      // Calculate Skill Matrix
+      const matched = userSkills.filter((skill: string) =>
+        new RegExp(`\\b${skill}\\b`, "i").test(description)
+      );
+
+      const matchScore =
+        userSkills.length > 0
+          ? Math.round((matched.length / userSkills.length) * 100)
+          : 80;
+
+      return {
+        id: item.job_id || `job-${idx}`,
+        title: item.job_title || role,
+        company: item.employer_name || "Unknown",
+        location: item.job_city ? `${item.job_city}, ${item.job_country}` : "Remote",
+        applyLink: item.job_apply_link || "https://google.com/jobs",
+        matchScore: Math.min(98, Math.max(45, matchScore)),
+        matchedSkills: matched,
+        missingSkills: [],
+        description: description.slice(0, 220) + "...",
+      };
     });
 
-    const groqData = await groqRes.json();
-    const result = JSON.parse(groqData.choices[0]?.message?.content || "{}");
-
-    return NextResponse.json({ success: true, jobs: result.jobs || [] });
-  } catch (error) {
-    console.error("Job Search API Error:", error);
-    return NextResponse.json({ error: "Failed to fetch job matches" }, { status: 500 });
+    return NextResponse.json({ success: true, jobs: processedJobs });
+  } catch (error: any) {
+    console.error("Job Aggregation Error:", error);
+    return NextResponse.json({ error: "Failed to fetch live job postings" }, { status: 500 });
   }
 }

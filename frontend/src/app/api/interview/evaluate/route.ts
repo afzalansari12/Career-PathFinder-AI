@@ -1,42 +1,86 @@
 // frontend/src/app/api/interview/evaluate/route.ts
-import { NextResponse } from "next/server";
-import { evaluateInterview } from "@/lib/groq";
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { z } from "zod";
 
-export let latestInterviewScore: number | null = null;
+const requestSchema = z.object({
+  question: z.string().min(5),
+  answer: z.string().min(10, "Response must be at least 10 characters long."),
+  targetRole: z.string().optional().default("Software Engineer"),
+});
 
-export async function GET() {
-  return NextResponse.json({
-    success: true,
-    score: latestInterviewScore ?? 0,
-  });
-}
-
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { question, answer } = body;
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!question || !answer) {
+    const body = await req.json();
+    const validation = requestSchema.safeParse(body);
+
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Question and answer are required" },
+        { error: "Invalid payload", details: validation.error.format() },
         { status: 400 }
       );
     }
 
-    const evaluation = await evaluateInterview(question, answer);
+    const { question, answer, targetRole } = validation.data;
 
-    const score = typeof evaluation?.score === "number" ? evaluation.score : 75;
-    const feedback = evaluation?.feedback || "Answer evaluated successfully.";
+    const prompt = `
+      You are an engineering leader evaluating a candidate's response in an interview.
+      Target Role: "${targetRole}"
+      Question: "${question}"
+      Candidate Answer: "${answer}"
 
-    latestInterviewScore = score;
+      Evaluate the answer based on:
+      1. Technical accuracy and domain proficiency
+      2. Clarity and communication structure
+      3. Problem-solving approach (STAR format for behavioral questions)
+
+      Return strictly valid JSON with no extra commentary:
+      {
+        "overallScore": 82,
+        "technicalAccuracyScore": 85,
+        "communicationScore": 80,
+        "strengths": [
+          "Identified core performance bottlenecks correctly.",
+          "Clear explanation of state management lifecycle."
+        ],
+        "areasToImprove": [
+          "Could mention edge cases like network timeouts or retry mechanics."
+        ],
+        "modelAnswer": "An ideal response should highlight..."
+      }
+    `;
+
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      }),
+    });
+
+    const groqData = await groqRes.json();
+    const evaluation = JSON.parse(groqData.choices[0]?.message?.content || "{}");
 
     return NextResponse.json({
       success: true,
-      score,
-      feedback,
+      evaluation,
     });
-  } catch (error) {
-    console.error("Evaluation Route Error:", error);
-    return NextResponse.json({ error: "Failed to evaluate answer" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Interview Evaluation Error:", error);
+    return NextResponse.json(
+      { error: "Failed to evaluate candidate response" },
+      { status: 500 }
+    );
   }
 }
