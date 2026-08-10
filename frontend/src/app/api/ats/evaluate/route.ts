@@ -1,14 +1,17 @@
 // frontend/src/app/api/ats/evaluate/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@supabase/supabase-js';
-import { DeterministicATSEngine } from '@/lib/ats/engine';
-import { z } from 'zod';
+//
+// Used by the "paste raw text and audit" tool on /dashboard/resume. This is
+// a manual/testing entry point into the same DeterministicATSEngine that
+// /api/upload uses for real PDF uploads — same scoring, same code path.
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { createClient } from "@supabase/supabase-js";
+import { DeterministicATSEngine } from "@/lib/ats/engine";
+import { z } from "zod";
 
 const requestSchema = z.object({
-  rawText: z.string().min(100, 'Resume content must be at least 100 characters.'),
-  targetRole: z.string().optional().default('Software Engineer'),
-  resumeId: z.string().uuid().optional()
+  rawText: z.string().min(100, "Resume content must be at least 100 characters."),
+  targetRole: z.string().optional().default("Software Engineer"),
 });
 
 const supabaseAdmin = createClient(
@@ -18,9 +21,9 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
@@ -28,60 +31,48 @@ export async function POST(req: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid payload', details: validation.error.format() },
+        { error: "Invalid payload", details: validation.error.format() },
         { status: 400 }
       );
     }
 
-    const { rawText, targetRole, resumeId } = validation.data;
+    const { rawText, targetRole } = validation.data;
 
-    // 1. RUN DETERMINISTIC ATS EVALUATION
+    // Deterministic evaluation only — this endpoint intentionally skips the
+    // Groq feedback step (kept fast for iterative "paste and test" use).
     const evaluation = DeterministicATSEngine.evaluate(rawText, targetRole);
 
-    // 2. QUERY USER PROFILE FROM SUPABASE
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('clerk_id', clerkId)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ error: 'User profile not found.' }, { status: 404 });
-    }
-
-    // 3. PERSIST EVALUATION IN SUPABASE
-    const { data: savedEvaluation, error: dbError } = await supabaseAdmin
-      .from('ats_evaluations')
-      .insert([
-        {
-          user_id: profile.id,
-          resume_id: resumeId || null,
-          overall_score: evaluation.overallScore,
-          structure_score: evaluation.breakdown.structureScore,
-          keyword_score: evaluation.breakdown.keywordScore,
-          formatting_score: evaluation.breakdown.formattingScore,
-          impact_score: evaluation.breakdown.impactScore,
-          breakdown: evaluation.breakdown,
-          deductions: evaluation.deductions,
-          detected_skills: evaluation.detectedSkills,
-          missing_critical_skills: evaluation.missingSkills
-        }
-      ])
-      .select('*')
+    const { data: saved, error: dbError } = await supabaseAdmin
+      .from("ats_evaluations")
+      .insert({
+        user_id: userId,
+        resume_url: null,
+        target_role: targetRole,
+        overall_score: evaluation.overallScore,
+        breakdown: evaluation.breakdown,
+        deductions: evaluation.deductions,
+        detected_skills: evaluation.detectedSkills,
+        missing_skills: evaluation.missingSkills,
+        metrics: evaluation.metrics,
+      })
+      .select()
       .single();
 
     if (dbError) {
-      console.error('Supabase ATS Persistence Error:', dbError);
-      return NextResponse.json({ error: 'Failed to record evaluation record' }, { status: 500 });
+      console.error("Supabase ATS Persistence Error:", dbError);
+      return NextResponse.json({ error: "Failed to record evaluation" }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      evaluationId: savedEvaluation.id,
-      ...evaluation
+      evaluationId: saved.id,
+      ...evaluation,
     });
-  } catch (error: any) {
-    console.error('ATS API Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("ATS API Error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

@@ -5,44 +5,57 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-export async function analyzeResume(resumeText: string) {
+import type { ATSEvaluationResult } from "./ats/engine";
+
+export interface ResumeFeedback {
+  summary: string;
+  strengths: string[];
+  improvements: string[];
+}
+
+/**
+ * IMPORTANT: this does NOT calculate a score. `evaluation` was already
+ * computed by DeterministicATSEngine.evaluate() before this is ever called.
+ * The model only turns that finished, rule-based result into plain-English
+ * narrative — there's no field in the schema below for it to write a score
+ * into, and the prompt explicitly forbids inventing one.
+ */
+export async function generateResumeFeedback(
+  evaluation: ATSEvaluationResult,
+  targetRole: string = "Software Engineer"
+): Promise<ResumeFeedback> {
   const prompt = `
 You are an expert Executive Resume Reviewer and Senior Technical Recruiter.
-Analyze the following resume text rigorously and return a strict, JSON-only output with no Markdown formatting or surrounding text.
 
-Evaluation Criteria:
-1. Overall Score (0-100): Weighted calculation across Content Impact (30%), Technical/Core Skills (30%), Structure & Formatting (20%), and ATS Readability (20%).
-2. Summary: A 2-sentence executive summary of the candidate's core domain, strengths, and primary career level.
-3. Extracted Skills: Break down into Hard/Technical Skills and Soft/Transferable Skills.
-4. ATS Strengths: List 3-4 distinct strengths of this resume.
-5. Critical Improvements: List 3-4 specific, actionable improvements (e.g., missing metrics, formatting issues, weak action verbs).
-6. Missing Key Sections: Identify missing sections (e.g., Projects, Certifications, Contact Info, Summary).
+You are given a DETERMINISTIC ATS analysis below, already computed by a rules
+engine. Do not recalculate, restate, or contradict the score. Your only job
+is to turn this structured data into clear, specific, human feedback for a
+candidate targeting: ${targetRole}.
 
-Resume Text:
-"""
-${resumeText}
-"""
+Overall Score: ${evaluation.overallScore}/100
+Structure: ${evaluation.breakdown.structureScore}/100
+Keywords: ${evaluation.breakdown.keywordScore}/100
+Impact: ${evaluation.breakdown.impactScore}/100
+Formatting: ${evaluation.breakdown.formattingScore}/100
 
-Return JSON matching this EXACT structure:
+Detected skills: ${evaluation.detectedSkills.join(", ") || "none"}
+Missing high-value skills: ${evaluation.missingSkills.join(", ") || "none"}
+
+Issues found:
+${evaluation.deductions.map((d) => `- [${d.category}] ${d.issue} (Suggestion: ${d.recommendation})`).join("\n") || "None"}
+
+Metrics: ${evaluation.metrics.totalWords} words, ${evaluation.metrics.bulletCount} bullets, ${evaluation.metrics.actionVerbCount} strong action verbs, ${evaluation.metrics.quantifiableMetricsCount} bullets with quantified metrics.
+
+Return JSON matching this EXACT structure, no markdown, no triple backticks:
 {
-  "score": 85,
-  "summary": "Strong Software Engineer with hands-on expertise in full-stack development and cloud systems.",
-  "skills": {
-    "technical": ["React", "Next.js", "TypeScript", "Node.js", "PostgreSQL", "C++", "Python"],
-    "soft": ["Problem Solving", "Collaboration", "Analytical Thinking"]
-  },
-  "strengths": [
-    "Clean project descriptions highlighting technical tech stack",
-    "Solid technical keyword density across modern frameworks",
-    "Clear educational history and background"
-  ],
-  "improvements": [
-    "Quantify achievements using concrete impact metrics (e.g., improved load speed by 30%)",
-    "Ensure action verbs start every bullet point in experience/projects",
-    "Add a dedicated LinkedIn/GitHub profile link at the top"
-  ],
-  "missingSections": ["Certifications"]
+  "summary": "2-3 sentence plain-English overview grounded in the numbers above",
+  "strengths": ["3-4 specific strengths, each referencing something from the data above"],
+  "improvements": ["4-6 specific, actionable improvements, ordered by impact, each grounded in a deduction or gap above"]
 }
+
+Rules:
+- Do not invent a score or any number not already provided above.
+- Every point must trace back to the evaluation data, not generic resume advice.
 `;
 
   try {
@@ -52,24 +65,28 @@ Return JSON matching this EXACT structure:
       messages: [
         {
           role: "system",
-          content: "You are a professional ATS parser and resume reviewer. Always output valid JSON.",
+          content:
+            "You are a resume feedback writer. You never calculate scores yourself — you only explain a score you're given. Always output valid JSON.",
         },
         { role: "user", content: prompt },
       ],
-      temperature: 0.2,
+      temperature: 0.3,
     });
 
     const rawContent = response.choices[0]?.message?.content || "{}";
-    return JSON.parse(rawContent);
-  } catch (error) {
-    console.error("Groq Resume Analyzer Error:", error);
+    const parsed = JSON.parse(rawContent);
     return {
-      score: 70,
-      summary: "Resume processed, but detailed AI parsing encountered a runtime issue.",
-      skills: { technical: [], soft: [] },
-      strengths: ["Text content successfully extracted from PDF"],
-      improvements: ["Re-upload resume for updated AI breakdown"],
-      missingSections: [],
+      summary: parsed.summary ?? "",
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+      improvements: Array.isArray(parsed.improvements) ? parsed.improvements : [],
+    };
+  } catch (error) {
+    console.error("Groq Resume Feedback Error:", error);
+    return {
+      summary:
+        "Your ATS score and category breakdown were calculated successfully. AI-generated narrative feedback couldn't be produced this time — please retry.",
+      strengths: [],
+      improvements: ["Re-run the analysis to get detailed AI feedback."],
     };
   }
 }

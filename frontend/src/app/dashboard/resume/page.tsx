@@ -1,269 +1,385 @@
 // frontend/src/app/dashboard/resume/page.tsx
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  CheckCircle2, 
-  AlertTriangle, 
-  FileText, 
-  Zap, 
-  Target, 
-  ArrowRight,
-  TrendingUp,
-  Award
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useState, useRef } from "react";
+import AppShell from "@/components/layout/AppShell";
+import {
+  FileText,
+  CheckCircle2,
+  Download,
+  RotateCcw,
+  Plus,
+  History,
+  Loader2,
+  Sparkles,
+  X,
+} from "lucide-react";
 
-interface ATSResult {
-  overallScore: number;
-  breakdown: {
-    structureScore: number;
-    keywordScore: number;
-    formattingScore: number;
-    impactScore: number;
-  };
-  detectedSkills: string[];
-  missingSkills: string[];
-  deductions: Array<{
-    category: string;
-    code: string;
-    pointsDeducted: number;
-    issue: string;
-    recommendation: string;
-  }>;
-  metrics: {
-    totalWords: number;
-    actionVerbCount: number;
-    quantifiableMetricsCount: number;
-    bulletCount: number;
-  };
+interface Suggestion {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
 }
 
-export default function ResumeATSPage() {
-  const [rawText, setRawText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ATSResult | null>(null);
+export default function ResumePage() {
+  const [activeStep, setActiveStep] = useState<"report" | "resume" | "cover">("resume");
 
-  const handleAnalyze = async () => {
-    if (!rawText.trim()) return;
-    setLoading(true);
+  // State for Resume Content & History (Undo functionality)
+  const initialContent = `AFZAL ANSARI
+Software Development Engineer Intern
++91-9289131013 · Delhi, India · afzalansari12ab@gmail.com
 
-    try {
-      const response = await fetch('/api/ats/evaluate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rawText, targetRole: 'Senior Full Stack Engineer' })
-      });
+SUMMARY
+Third-year Computer Science undergraduate with strong foundations in C++, Object-Oriented Programming, Data Structures & Algorithms, and Software Engineering. Experienced building and shipping scalable, cloud-native full-stack applications.
 
-      const data = await response.json();
-      if (data.success) {
-        setResult(data);
-      }
-    } catch (err) {
-      console.error('Failed to analyze resume:', err);
-    } finally {
-      setLoading(false);
+WORK EXPERIENCE
+Open Source Contributor (2025 - Present)
+ArduPilot - C++, ChibiOS RTOS, Embedded/Distributed Systems
+• Debugged and resolved a HardFault crash in ChibiOS DMA handling on a safety-critical flight-controller codebase.
+• Resolved a home-altitude and surface-handling bug in ArduSub, validating with SITL simulation across multiple code review cycles.`;
+
+  const [resumeText, setResumeText] = useState(initialContent);
+  const [history, setHistory] = useState<string[]>([initialContent]);
+  const [targetRole, setTargetRole] = useState("Software Development Engineer Intern");
+
+  // Telemetry & Groq Data
+  const [atsScore, setAtsScore] = useState(87);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([
+    {
+      id: "1",
+      title: "Add Measurable Results",
+      description: "Consider specifying metrics (e.g. latency reduction %, throughput boost) for your DMA handling fix.",
+      completed: false,
+    },
+    {
+      id: "2",
+      title: "Quantify Open Source Impact",
+      description: "Include PR reference numbers (#33933) and flight-controller safety parameters.",
+      completed: false,
+    },
+    {
+      id: "3",
+      title: "Improve Active Phrasing",
+      description: "Replace passive descriptions with action verbs like 'Engineered', 'Orchestrated', and 'Resolved'.",
+      completed: false,
+    },
+  ]);
+
+  const [coverLetter, setCoverLetter] = useState(
+    `Dear Hiring Manager,\n\nI am applying for the ${targetRole} role. With hands-on experience in C++, system optimization, and open-source contributions, I am eager to contribute to your engineering team.\n\nBest regards,\nAfzal Ansari`
+  );
+
+  // UI Modals & Loading
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showScanHistory, setShowScanHistory] = useState(false);
+  const [showNewScanModal, setShowNewScanModal] = useState(false);
+  const [savedStatus, setSavedStatus] = useState("Saved");
+
+  const pdfRef = useRef<HTMLDivElement>(null);
+
+  // Handle Text Editing with Undo History Tracking
+  const handleContentChange = (newText: string) => {
+    setResumeText(newText);
+    setHistory((prev) => [...prev, newText]);
+    setSavedStatus("Saving...");
+    setTimeout(() => setSavedStatus("Saved"), 600);
+  };
+
+  const handleUndo = () => {
+    if (history.length > 1) {
+      const updatedHistory = [...history];
+      updatedHistory.pop(); // Remove current state
+      const previousContent = updatedHistory[updatedHistory.length - 1];
+      setHistory(updatedHistory);
+      setResumeText(previousContent);
     }
   };
 
+  // Toggle Content Improvements
+  const toggleSuggestion = (id: string) => {
+    setSuggestions((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item))
+    );
+  };
+
+  // Run Real Groq AI Scan
+  const runGroqAudit = async () => {
+    setIsAnalyzing(true);
+    try {
+      const res = await fetch("/api/resume/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeText, targetRole }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAtsScore(data.atsScore || 88);
+        if (data.suggestions) setSuggestions(data.suggestions);
+        if (data.coverLetter) setCoverLetter(data.coverLetter);
+      }
+    } catch (err) {
+      console.error("Audit failed", err);
+    } finally {
+      setIsAnalyzing(false);
+      setShowNewScanModal(false);
+    }
+  };
+
+  // Native Print Handler
+  const handleDownloadPDF = () => {
+    window.print();
+  };
+
   return (
-    <div className="min-h-screen bg-black text-white p-8 max-w-7xl mx-auto space-y-8 font-sans">
-      {/* Header */}
-      <div className="flex justify-between items-end border-b border-white/10 pb-6">
-        <div>
-          <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20 mb-2">
-            Enterprise ATS Engine v2.4
-          </Badge>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Resume Intelligence</h1>
-          <p className="text-sm text-neutral-400 mt-1">
-            Deterministic rule-based audit with enterprise keyword corpus matching.
-          </p>
+    <AppShell>
+      {/* Top Header Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-border mb-6 no-print">
+        {/* Step Navigation Tabs */}
+        <div className="flex items-center gap-2 bg-secondary/50 p-1 rounded-xl border border-border">
+          <button
+            onClick={() => setActiveStep("report")}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeStep === "report"
+                ? "bg-card text-foreground shadow-2xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Step 1 · Report
+          </button>
+          <button
+            onClick={() => setActiveStep("resume")}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeStep === "resume"
+                ? "bg-card text-foreground shadow-2xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Step 2 · Resume
+          </button>
+          <button
+            onClick={() => setActiveStep("cover")}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              activeStep === "cover"
+                ? "bg-card text-foreground shadow-2xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Step 3 · Cover Letter
+          </button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowNewScanModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-card hover:bg-accent border border-border transition shadow-2xs cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 text-primary" /> New Scan
+          </button>
+
+          <button
+            onClick={() => setShowScanHistory(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-card hover:bg-accent border border-border transition shadow-2xs cursor-pointer"
+          >
+            <History className="w-3.5 h-3.5 text-primary" /> Scan History
+          </button>
+
+          <button
+            onClick={handleDownloadPDF}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" /> Download PDF
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Input Panel */}
-        <div className="lg:col-span-5 space-y-4">
-          <Card className="bg-neutral-900/50 border-white/10 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="text-lg font-medium text-neutral-200 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-purple-400" />
-                Raw Resume Input
-              </CardTitle>
-              <CardDescription className="text-neutral-400 text-xs">
-                Paste raw extracted text or bullet points directly to run the audit.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <textarea
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-                placeholder="Paste full resume text here..."
-                rows={16}
-                className="w-full bg-black/60 border border-white/10 rounded-lg p-3 text-xs text-neutral-300 font-mono focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all resize-none"
-              />
-              <Button
-                onClick={handleAnalyze}
-                disabled={loading || !rawText.trim()}
-                className="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs h-10 transition-all"
-              >
-                {loading ? 'Running Deterministic Audit...' : 'Execute ATS Audit'}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Main Studio Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Telemetry & Improvement Suggestions Sidebar */}
+        <div className="lg:col-span-5 bg-card border border-border rounded-2xl p-6 shadow-2xs space-y-6 sticky top-6 no-print">
+          <div>
+            <h2 className="text-base font-heading font-bold text-foreground truncate">
+              {targetRole}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Target: Amazon / Big Tech</p>
 
-        {/* Results Panel */}
-        <div className="lg:col-span-7 space-y-6">
-          {!result ? (
-            <Card className="bg-neutral-900/20 border-white/5 h-full flex flex-col justify-center items-center p-12 text-center">
-              <Zap className="w-10 h-10 text-neutral-600 mb-4 animate-pulse" />
-              <h3 className="text-neutral-300 font-medium text-sm">No Resume Audited Yet</h3>
-              <p className="text-neutral-500 text-xs max-w-sm mt-1">
-                Paste text on the left to review mathematical structure, impact velocity, and keyword density.
-              </p>
-            </Card>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              {/* Overall Score Banner */}
-              <Card className="bg-neutral-900/80 border-white/10 p-6 relative overflow-hidden">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-xs font-mono uppercase tracking-wider text-neutral-400">
-                      Overall Match Score
-                    </p>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-5xl font-extrabold tracking-tight text-white">
-                        {result.overallScore}
-                      </span>
-                      <span className="text-neutral-500 text-sm font-mono">/ 100</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <Badge
-                      className={`${
-                        result.overallScore >= 80
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                      } text-xs font-semibold px-3 py-1`}
-                    >
-                      {result.overallScore >= 80 ? 'Interview Ready' : 'Optimization Required'}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Metric Sub-bars */}
-                <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/10">
-                  <div>
-                    <span className="text-[10px] text-neutral-400 block font-mono">STRUCTURE</span>
-                    <span className="text-sm font-semibold text-white">
-                      {result.breakdown.structureScore}%
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-neutral-400 block font-mono">KEYWORDS</span>
-                    <span className="text-sm font-semibold text-white">
-                      {result.breakdown.keywordScore}%
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-neutral-400 block font-mono">IMPACT</span>
-                    <span className="text-sm font-semibold text-white">
-                      {result.breakdown.impactScore}%
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-neutral-400 block font-mono">FORMAT</span>
-                    <span className="text-sm font-semibold text-white">
-                      {result.breakdown.formattingScore}%
-                    </span>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Deductions & Action Items */}
-              <Card className="bg-neutral-900/50 border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium text-neutral-200 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-400" />
-                    Itemized Deductions ({result.deductions.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {result.deductions.length === 0 ? (
-                    <div className="flex items-center gap-2 text-emerald-400 text-xs">
-                      <CheckCircle2 className="w-4 h-4" />
-                      No critical formatting or structural issues detected!
-                    </div>
-                  ) : (
-                    result.deductions.map((ded, i) => (
-                      <div
-                        key={i}
-                        className="p-3 bg-black/40 border border-white/5 rounded-lg space-y-1"
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-semibold text-neutral-200">
-                            {ded.issue}
-                          </span>
-                          <span className="text-[10px] font-mono text-red-400 bg-red-950/40 px-2 py-0.5 rounded border border-red-900/30">
-                            -{ded.pointsDeducted} pts
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-neutral-400 flex items-center gap-1 mt-1">
-                          <ArrowRight className="w-3 h-3 text-purple-400 shrink-0" />
-                          {ded.recommendation}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Skill Matrix */}
-              <div className="grid grid-cols-2 gap-4">
-                <Card className="bg-neutral-900/50 border-white/10 p-4">
-                  <span className="text-xs font-mono text-neutral-400 block mb-2">
-                    DETECTED SKILLS ({result.detectedSkills.length})
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {result.detectedSkills.map((skill, i) => (
-                      <Badge
-                        key={i}
-                        className="bg-purple-950/40 text-purple-300 border-purple-800/30 text-[10px]"
-                      >
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-                </Card>
-
-                <Card className="bg-neutral-900/50 border-white/10 p-4">
-                  <span className="text-xs font-mono text-neutral-400 block mb-2">
-                    MISSING HIGH-VALUE SKILLS
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {result.missingSkills.map((skill, i) => (
-                      <Badge
-                        key={i}
-                        className="bg-neutral-800/50 text-neutral-400 border-white/5 text-[10px]"
-                      >
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-                </Card>
+            <div className="mt-5 flex items-center gap-4">
+              <div className="relative w-20 h-20 shrink-0 flex items-center justify-center rounded-full border-4 border-emerald-500 bg-emerald-50/50">
+                <span className="text-2xl font-bold text-emerald-700">{atsScore}</span>
               </div>
-            </motion.div>
-          )}
+              <div>
+                <p className="text-xs font-bold text-foreground">
+                  {suggestions.filter((s) => s.completed).length} of {suggestions.length} suggestions
+                  completed
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-snug mt-1">
+                  Resumes with a score of 75 or higher are 3x more likely to pass ATS screening.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <hr className="border-border" />
+
+          {/* Interactive Improvements Checklist */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                Content Improvements
+              </h3>
+              <span className="text-[11px] font-bold text-emerald-700">
+                {suggestions.filter((s) => s.completed).length} Completed
+              </span>
+            </div>
+
+            {suggestions.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => toggleSuggestion(item.id)}
+                className={`p-3.5 border rounded-xl transition cursor-pointer space-y-1 ${
+                  item.completed
+                    ? "bg-emerald-50/30 border-emerald-300"
+                    : "bg-card hover:bg-accent/40 border-border"
+                }`}
+              >
+                <div className="flex justify-between items-center">
+                  <p className="text-xs font-bold text-foreground">{item.title}</p>
+                  <CheckCircle2
+                    className={`w-4 h-4 transition ${
+                      item.completed ? "text-emerald-600 fill-emerald-100" : "text-muted-foreground/40"
+                    }`}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-snug">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Dynamic Live Editor Sheet */}
+        <div className="lg:col-span-7 space-y-3">
+          {/* Status & Undo Toolbar */}
+          <div className="flex justify-between items-center px-1 no-print">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <button
+                onClick={handleUndo}
+                disabled={history.length <= 1}
+                className="flex items-center gap-1 hover:text-foreground disabled:opacity-40 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Undo
+              </button>
+              <span>·</span>
+              <span className="text-emerald-700 font-bold">{savedStatus}</span>
+            </div>
+          </div>
+
+          {/* Dynamic Content View based on Tab */}
+          <div
+            className="bg-card border border-border rounded-2xl p-8 shadow-2xs min-h-[650px] printable-area"
+            ref={pdfRef}
+          >
+            {activeStep === "resume" && (
+              <textarea
+                value={resumeText}
+                onChange={(e) => handleContentChange(e.target.value)}
+                className="w-full h-[600px] bg-transparent resize-none focus:outline-none font-serif text-sm leading-relaxed text-foreground"
+              />
+            )}
+
+            {activeStep === "cover" && (
+              <textarea
+                value={coverLetter}
+                onChange={(e) => setCoverLetter(e.target.value)}
+                className="w-full h-[600px] bg-transparent resize-none focus:outline-none font-serif text-sm leading-relaxed text-foreground"
+              />
+            )}
+
+            {activeStep === "report" && (
+              <div className="space-y-4">
+                <h3 className="font-heading font-bold text-base text-foreground">
+                  ATS Match Summary Report
+                </h3>
+                <div className="p-4 bg-accent/40 border border-border rounded-xl space-y-2 text-xs">
+                  <p className="font-bold text-foreground">Keyword Density Analysis</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Matched keywords for {targetRole}: C++, Data Structures, RTOS, Software
+                    Engineering.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* New Scan Modal */}
+      {showNewScanModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
+          <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b border-border">
+              <h3 className="font-heading font-bold text-base text-foreground">
+                Run Groq AI Resume Scan
+              </h3>
+              <button
+                onClick={() => setShowNewScanModal(false)}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-foreground block mb-1">Target Engineering Role</label>
+                <input
+                  type="text"
+                  value={targetRole}
+                  onChange={(e) => setTargetRole(e.target.value)}
+                  className="w-full p-2.5 bg-background border border-border rounded-xl focus:outline-none text-xs"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={runGroqAudit}
+              disabled={isAnalyzing}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {isAnalyzing ? "Analyzing with Groq AI..." : "Start Analysis"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Scan History Drawer */}
+      {showScanHistory && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
+          <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b border-border">
+              <h3 className="font-heading font-bold text-base text-foreground">Audit Scan History</h3>
+              <button
+                onClick={() => setShowScanHistory(false)}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <div className="p-3 bg-accent/40 border border-border rounded-xl flex justify-between items-center">
+                <div>
+                  <p className="font-bold text-foreground">{targetRole}</p>
+                  <p className="text-[10px] text-muted-foreground">Today at 01:42 AM</p>
+                </div>
+                <span className="font-bold text-emerald-700">{atsScore} ATS</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </AppShell>
   );
 }

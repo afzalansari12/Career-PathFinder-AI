@@ -1,13 +1,26 @@
 // frontend/src/app/api/upload/route.ts
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { createClient } from "@supabase/supabase-js";
 import { extractPdfText } from "@/lib/pdf";
-import { analyzeResume } from "@/lib/groq";
-import { setLatestAnalysis } from "@/app/api/resume/route";
+import { DeterministicATSEngine } from "@/lib/ats/engine";
+import { generateResumeFeedback } from "@/lib/groq";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(req: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
+    const targetRole = (formData.get("targetRole") as string) || "Software Engineer";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -16,24 +29,64 @@ export async function POST(req: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 1. Extract raw text from PDF
+    // 1. Extract raw text from the PDF (no AI)
     const resumeText = await extractPdfText(buffer);
 
     if (!resumeText || resumeText.trim().length === 0) {
       return NextResponse.json(
-        { error: "Could not extract text from PDF. Ensure file is not scanned/image-only." },
+        { error: "Could not extract text from PDF. Ensure the file is not scanned/image-only." },
         { status: 400 }
       );
     }
 
-    // 2. Perform deep ATS evaluation using Groq
-    const analysis = await analyzeResume(resumeText);
-    setLatestAnalysis(analysis);
+    // 2. Deterministic ATS scoring (no AI) — this is the score of record.
+    const evaluation = DeterministicATSEngine.evaluate(resumeText, targetRole);
+
+    // 3. Groq only narrates the finished result — it cannot change the score.
+    const feedback = await generateResumeFeedback(evaluation, targetRole);
+
+    // 4. Upload the original PDF to Supabase Storage
+    const fileName = `${userId}/${Date.now()}-${file.name}`;
+    const { error: storageError } = await supabaseAdmin.storage
+      .from("resumes")
+      .upload(fileName, buffer, { upsert: true, contentType: "application/pdf" });
+
+    if (storageError) {
+      console.error("Storage error:", storageError);
+      // Don't hard-fail the whole request over storage — the score is still
+      // valid and useful even if the raw file couldn't be archived.
+    }
+
+    // 5. Persist the full analysis
+    const { data: saved, error: dbError } = await supabaseAdmin
+      .from("ats_evaluations")
+      .insert({
+        user_id: userId,
+        resume_url: storageError ? null : fileName,
+        target_role: targetRole,
+        overall_score: evaluation.overallScore,
+        breakdown: evaluation.breakdown,
+        deductions: evaluation.deductions,
+        detected_skills: evaluation.detectedSkills,
+        missing_skills: evaluation.missingSkills,
+        metrics: evaluation.metrics,
+        ai_summary: feedback.summary,
+        ai_strengths: feedback.strengths,
+        ai_improvements: feedback.improvements,
+      })
+      .select()
+      .single();
+
+    if (dbError) {
+      console.error("Database error:", dbError);
+      return NextResponse.json({ error: dbError.message }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
-      text: resumeText,
-      analysis,
+      evaluationId: saved.id,
+      ...evaluation,
+      aiFeedback: feedback,
     });
   } catch (error: unknown) {
     console.error("Upload route error:", error);

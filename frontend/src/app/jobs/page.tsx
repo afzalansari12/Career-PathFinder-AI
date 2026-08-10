@@ -1,144 +1,167 @@
 // frontend/src/app/jobs/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Briefcase, MapPin, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
+import AppShell from "@/components/layout/AppShell";
+import { RealJob } from "@/app/api/jobs/route";
+import { Briefcase, MapPin, ExternalLink, Sparkles, Loader2 } from "lucide-react";
 
-interface RealJob {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  applyLink: string;
-  matchScore: number;
-  matchedSkills: string[];
-  missingSkills: string[];
-  description: string;
-}
+const TARGET_ROLES = [
+  "Software Engineer",
+  "Full Stack Engineer",
+  "Frontend Engineer",
+  "Backend Engineer",
+];
 
 export default function JobsPage() {
-  const [selectedRole, setSelectedRole] = useState("Full Stack Engineer");
+  const [selectedRole, setSelectedRole] = useState(TARGET_ROLES[0]);
   const [jobs, setJobs] = useState<RealJob[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchJobs = async (role: string) => {
-    try {
-      setLoading(true);
-      const res = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          role,
-          userSkills: ["React", "TypeScript", "Next.js", "Node.js", "PostgreSQL", "Tailwind CSS"],
-        }),
-      });
-
-      const data = await res.json();
-      if (data.jobs) setJobs(data.jobs);
-    } catch (err) {
-      console.error("Failed to fetch jobs:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const [selectedJob, setSelectedJob] = useState<RealJob | null>(null);
 
   useEffect(() => {
-    fetchJobs(selectedRole);
-  }, []);
+    async function loadJobs() {
+      setLoading(true);
+      try {
+        let userSkills = ["React", "TypeScript", "Next.js", "C++"];
+
+        // Safely attempt profile fetch
+        const profileRes = await fetch("/api/profile");
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          if (profileData.profile?.skills?.length) {
+            userSkills = profileData.profile.skills;
+          }
+        }
+
+        // Query live jobs endpoint
+        const res = await fetch("/api/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: selectedRole, userSkills }),
+        });
+
+        if (!res.ok) {
+          throw new Error(`Jobs API returned status ${res.status}`);
+        }
+
+        const data = await res.json();
+        if (data.jobs && data.jobs.length > 0) {
+          setJobs(data.jobs);
+          setSelectedJob(data.jobs[0]);
+        } else {
+          setJobs([]);
+          setSelectedJob(null);
+        }
+      } catch (err) {
+        console.error("Failed to load jobs:", err);
+        setJobs([]);
+        setSelectedJob(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadJobs();
+  }, [selectedRole]);
 
   return (
-    <div className="min-h-screen bg-black text-white p-8 max-w-7xl mx-auto space-y-8 font-sans">
-      <div className="flex justify-between items-end border-b border-white/10 pb-6">
-        <div>
-          <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20 mb-2">
-            Real-Time Aggregator
-          </Badge>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Live Job Matcher</h1>
-          <p className="text-sm text-neutral-400 mt-1">
-            Active roles aggregated and matched against your technical profile.
-          </p>
-        </div>
+    <AppShell>
+      <div className="-mt-6 -mx-6 lg:-mt-10 lg:-mx-10 border-b border-border bg-card px-6 py-3 mb-6 flex items-center justify-between shadow-2xs">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <Sparkles className="w-3.5 h-3.5" /> Real-Time Aggregator
+        </span>
 
         <select
           value={selectedRole}
-          onChange={(e) => {
-            setSelectedRole(e.target.value);
-            fetchJobs(e.target.value);
-          }}
-          className="p-2.5 bg-neutral-900 border border-white/10 rounded-lg text-xs font-medium text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+          onChange={(e) => setSelectedRole(e.target.value)}
+          className="bg-card border border-border text-foreground text-xs font-bold rounded-xl px-4 py-1.5 shadow-2xs focus:outline-none cursor-pointer"
         >
-          <option value="Full Stack Engineer">Full Stack Engineer</option>
-          <option value="Frontend Developer">Frontend Developer</option>
-          <option value="Backend Developer">Backend Developer</option>
-          <option value="DevOps Engineer">DevOps Engineer</option>
+          {TARGET_ROLES.map((role) => (
+            <option key={role} value={role}>{role}</option>
+          ))}
         </select>
       </div>
 
-      {loading ? (
-        <div className="p-16 text-center text-neutral-500 font-mono text-xs animate-pulse">
-          Querying remote job providers and computing compatibility score...
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {jobs.map((job) => (
-            <Card key={job.id} className="bg-neutral-900/50 border-white/10 flex flex-col justify-between">
-              <CardHeader>
-                <div className="flex justify-between items-start gap-4">
-                  <div>
-                    <CardTitle className="text-base font-semibold text-white">{job.title}</CardTitle>
-                    <p className="text-xs text-neutral-400 flex items-center gap-2 mt-1">
-                      <Briefcase className="w-3 h-3 text-purple-400" /> {job.company}
-                      <span className="text-neutral-600">•</span>
-                      <MapPin className="w-3 h-3 text-neutral-400" /> {job.location}
-                    </p>
-                  </div>
-                  <Badge
-                    className={`${
-                      job.matchScore >= 80
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                    } text-xs font-bold px-2.5 py-1 shrink-0`}
-                  >
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="lg:col-span-5 space-y-3 max-h-[780px] overflow-y-auto pr-1">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground space-y-2">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <p className="text-xs font-medium">Fetching live listings...</p>
+            </div>
+          ) : jobs.length === 0 ? (
+            <div className="p-6 text-center text-xs text-muted-foreground bg-card border border-border rounded-2xl">
+              No positions found. Try selecting another target role.
+            </div>
+          ) : (
+            jobs.map((job) => (
+              <div
+                key={job.id}
+                onClick={() => setSelectedJob(job)}
+                className={`p-4 rounded-2xl border transition cursor-pointer space-y-2 ${
+                  selectedJob?.id === job.id
+                    ? "bg-card border-primary ring-1 ring-primary shadow-xs"
+                    : "bg-card border-border hover:border-border/80"
+                }`}
+              >
+                <div className="flex justify-between items-start">
+                  <h3 className="font-bold text-sm text-foreground">{job.title}</h3>
+                  <span className="text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
                     {job.matchScore}% Match
-                  </Badge>
+                  </span>
                 </div>
-              </CardHeader>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><Briefcase className="w-3 h-3 text-primary" />{job.company}</span>
+                  <span>·</span>
+                  <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{job.location}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
 
-              <CardContent className="space-y-4">
-                <p className="text-xs text-neutral-400 leading-relaxed">{job.description}</p>
-                {job.matchedSkills.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-2">
-                    {job.matchedSkills.map((skill, i) => (
-                      <span
-                        key={i}
-                        className="text-[10px] bg-purple-950/40 text-purple-300 border border-purple-800/30 px-2 py-0.5 rounded font-mono"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-
-              <CardFooter className="pt-4 border-t border-white/10">
+        <div className="lg:col-span-7 bg-card border border-border rounded-2xl p-8 shadow-2xs min-h-[600px] sticky top-6 flex flex-col justify-between">
+          {selectedJob ? (
+            <div className="space-y-6">
+              <div className="flex justify-between items-start pb-4 border-b border-border">
+                <div>
+                  <h2 className="text-xl font-heading font-bold text-foreground">{selectedJob.title}</h2>
+                  <p className="text-xs font-semibold text-primary mt-1">{selectedJob.company} · {selectedJob.location}</p>
+                </div>
                 <a
-                  href={job.applyLink}
+                  href={selectedJob.applyLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full"
+                  className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-2xs"
                 >
-                  <Button className="w-full bg-white/10 hover:bg-white/20 text-white text-xs h-9 flex items-center justify-center gap-2">
-                    Apply Directly <ExternalLink className="w-3 h-3" />
-                  </Button>
+                  Apply Directly <ExternalLink className="w-3.5 h-3.5" />
                 </a>
-              </CardFooter>
-            </Card>
-          ))}
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Role Description</h4>
+                <p className="text-xs text-foreground/90 leading-relaxed">{selectedJob.description}</p>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Skill Matches</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedJob.matchedSkills?.map((skill) => (
+                    <span key={skill} className="text-xs bg-accent text-accent-foreground font-semibold px-2.5 py-1 rounded-md border border-border">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground text-xs">
+              Select a position from the left panel to inspect match parameters and apply.
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </AppShell>
   );
 }
