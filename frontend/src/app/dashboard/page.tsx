@@ -96,17 +96,17 @@ export default function DashboardPage() {
     fetchTelemetry();
   }, []);
 
- // Local Mock Checkout Handler (Bypasses Razorpay KYC / PAN requirement)
- const handleRazorpayPayment = async () => {
-  setIsProcessingPayment(true);
+  // Local Mock Checkout Handler
+  const handleRazorpayPayment = async () => {
+    setIsProcessingPayment(true);
 
-  setTimeout(() => {
-    alert("Mock Payment Successful! Unlimited Pro Credits Unlocked.");
-    setData((prev) => ({ ...prev, creditsLeft: 999 }));
-    setShowUpgradeModal(false);
-    setIsProcessingPayment(false);
-  }, 800);
-};
+    setTimeout(() => {
+      alert("Mock Payment Successful! Unlimited Pro Credits Unlocked.");
+      setData((prev) => ({ ...prev, creditsLeft: 999 }));
+      setShowUpgradeModal(false);
+      setIsProcessingPayment(false);
+    }, 800);
+  };
 
   return (
     <AppShell>
@@ -155,7 +155,7 @@ export default function DashboardPage() {
                 </Link>
 
                 <Link
-                  href="/dashboard/resume"
+                  href="/resume"
                   className="mt-5 flex items-center gap-4 group p-2 -mx-2 rounded-xl hover:bg-accent/40 transition"
                 >
                   <div className="relative w-20 h-20 shrink-0 flex items-center justify-center rounded-full border-4 border-emerald-500 bg-emerald-50/50 group-hover:scale-105 transition-transform">
@@ -237,7 +237,7 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Link
-                href="/dashboard/resume"
+                href="/resume"
                 className="p-4 bg-card hover:bg-secondary/60 border border-border hover:border-primary/40 rounded-2xl transition group flex flex-col justify-between h-32 shadow-2xs"
               >
                 <div>
