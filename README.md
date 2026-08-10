@@ -80,16 +80,16 @@ npm install
 ### 3. Configure Environment Variables
 Create `.env.local` inside the `frontend/` directory:
 ```env
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_cm9idXN0LXNlYXNuYWlsLTMzLmNsZXJrLmFjY291bnRzLmRldiQ
-CLERK_SECRET_KEY=sk_test_fTsNXAt8wVFNcKQPhsy7uEIT2A3LmieHy5GjKXRqlp
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
 
 GROQ_API_KEY=your_groq_api_key
 GEMINI_API_KEY=your_gemini_api_key
 
-ADZUNA_APP_ID=7968456e
-ADZUNA_APP_KEY=e817143a28a08611eee864adf63e4a65
+ADZUNA_APP_ID=your_adzuna_app_id
+ADZUNA_APP_KEY=your_adzuna_app_key
 
-NEXT_PUBLIC_SUPABASE_URL=https://xbyossuhwotuzqgzbykb.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
