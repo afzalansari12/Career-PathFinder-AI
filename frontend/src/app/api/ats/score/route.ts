@@ -1,11 +1,11 @@
 // frontend/src/app/api/ats/score/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseClient } from '@/lib/supabase/server';
 import { DeterministicATSEngine } from '@/lib/ats/engine';
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseClient();
 
     const {
       data: { user },

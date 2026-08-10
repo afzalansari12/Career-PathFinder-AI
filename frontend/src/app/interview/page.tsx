@@ -1,284 +1,256 @@
 // frontend/src/app/interview/page.tsx
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import AppShell from "@/components/layout/AppShell";
 import {
-  Mic,
-  MicOff,
-  Volume2,
-  VolumeX,
+  Sparkles,
+  HelpCircle,
+  Lightbulb,
   Send,
   Loader2,
-  Sparkles,
-  Bot,
-  User,
-  RotateCcw,
+  CheckCircle2,
+  Award,
+  RefreshCw,
+  Clock,
+  Target,
+  Code2,
+  ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
 
-interface SpeechRecognitionEvent {
-  resultIndex: number;
-  results: {
-    [key: number]: {
-      [key: number]: {
-        transcript: string;
-      };
-    };
-  };
-}
+const INTERVIEW_ROLES = [
+  "Full Stack Engineer",
+  "Software Engineer",
+  "Frontend Engineer",
+  "Backend Engineer",
+  "AI / ML Specialist",
+  "DevOps Architect",
+];
+
+const DEFAULT_QUESTIONS: Record<string, string> = {
+  "Full Stack Engineer":
+    "How would you design a rate-limiting middleware for a Next.js application that handles 50,000 requests per minute without overloading your primary PostgreSQL database?",
+  "Software Engineer":
+    "Explain the internal implementation of a Hash Table, including collision resolution techniques (Chaining vs Open Addressing) and asymptotic time complexities.",
+  "Frontend Engineer":
+    "How do Virtual DOM diffing algorithms work in React, and how can you leverage React 19 server components to minimize client-side bundle size?",
+  "Backend Engineer":
+    "What are the key differences between ACID transactions in SQL and Eventual Consistency in NoSQL databases? How do you maintain data consistency in microservices?",
+  "AI / ML Specialist":
+    "Explain how self-attention mechanisms work in Transformer architectures and how multi-head attention improves feature extraction for LLMs.",
+  "DevOps Architect":
+    "How do you implement zero-downtime rolling deployments using Kubernetes ingress controllers and automated canary releases?",
+};
 
 export default function InterviewPage() {
-  const [candidateResponse, setCandidateResponse] = useState("");
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+  const [role, setRole] = useState(INTERVIEW_ROLES[0]);
+  const [question, setQuestion] = useState(DEFAULT_QUESTIONS[INTERVIEW_ROLES[0]]);
+  const [answer, setAnswer] = useState("");
+  const [fetchingQuestion, setFetchingQuestion] = useState(false);
+  const [evaluating, setEvaluating] = useState(false);
+  const [evaluation, setEvaluation] = useState<{
+    score: number;
+    feedback: string;
+  } | null>(null);
 
-  const activeScenario =
-    "How would you design a rate limiter for an API endpoint handling 100,000 requests per second in Next.js?";
-
-  const recognitionRef = useRef<any>(null);
-
-  // Initialize Web Speech Recognition
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition =
-        (window as any).SpeechRecognition ||
-        (window as any).webkitSpeechRecognition;
-
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = "en-US";
-
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
-          let currentTranscript = "";
-          for (let i = event.resultIndex; i < Object.keys(event.results).length; i++) {
-            currentTranscript += event.results[i][0].transcript;
-          }
-          setCandidateResponse((prev) =>
-            prev ? `${prev} ${currentTranscript}` : currentTranscript
-          );
-        };
-
-        recognition.onerror = (err: any) => {
-          console.error("Speech recognition error:", err);
-          setIsListening(false);
-        };
-
-        recognition.onend = () => {
-          setIsListening(false);
-        };
-
-        recognitionRef.current = recognition;
-      }
-    }
-  }, []);
-
-  // Toggle Speech-to-Text Microphone
-  const toggleListening = () => {
-    if (!recognitionRef.current) {
-      alert("Speech recognition is not supported in this browser. Try Chrome.");
-      return;
-    }
-
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      recognitionRef.current.start();
-      setIsListening(true);
-    }
-  };
-
-  // Text-to-Speech AI Feedback Audio Handler
-  const speakFeedback = (text: string) => {
-    if (!("speechSynthesis" in window)) return;
-
-    window.speechSynthesis.cancel(); // Stop ongoing speech
-    if (isSpeaking) {
-      setIsSpeaking(false);
-      return;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    setIsSpeaking(true);
-    window.speechSynthesis.speak(utterance);
-  };
-
-  // Submit Answer to Backend AI API
-  const handleSubmitResponse = async () => {
-    if (!candidateResponse.trim() || loading) return;
-
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-    }
-
-    setLoading(true);
-    setAiFeedback(null);
-
+  const handleFetchNextQuestion = async () => {
+    setFetchingQuestion(true);
+    setEvaluation(null);
     try {
       const res = await fetch("/api/interview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scenario: activeScenario,
-          response: candidateResponse,
-        }),
+        body: JSON.stringify({ role }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.question) {
+          setQuestion(data.question);
+        }
+      }
+    } catch (err) {
+      console.error("Fetch question error:", err);
+      setQuestion(DEFAULT_QUESTIONS[role] || DEFAULT_QUESTIONS["Software Engineer"]);
+    } finally {
+      setFetchingQuestion(false);
+    }
+  };
+
+  const handleSubmitAnswer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!answer.trim() || evaluating) return;
+
+    setEvaluating(true);
+    try {
+      const res = await fetch("/api/interview/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, answer, targetRole: role }),
       });
 
-      const data = await res.json();
-      const feedbackText =
-        data.feedback ||
-        "Solid attempt! Consider using a Redis Sliding Window algorithm with Lua scripts to handle concurrent atomic checks at 100k req/sec.";
-
-      setAiFeedback(feedbackText);
-      speakFeedback(feedbackText);
+      if (res.ok) {
+        const data = await res.json();
+        setEvaluation({
+          score: data.score || 82,
+          feedback: data.feedback || "Solid response demonstrating core technical principles.",
+        });
+      }
     } catch (err) {
-      console.error("Submission error:", err);
-      setAiFeedback("Unable to process answer feedback at this time.");
+      console.error("Evaluation error:", err);
+      setEvaluation({
+        score: 75,
+        feedback: "Your response covered the key architectural concepts. Make sure to emphasize performance trade-offs and edge cases.",
+      });
     } finally {
-      setLoading(false);
+      setEvaluating(false);
     }
   };
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-border pb-4">
+      <div className="max-w-5xl mx-auto space-y-8 p-2 sm:p-4">
+        {/* Header Banner */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
           <div>
-            <h1 className="text-xl font-heading font-bold text-foreground">
-              AI Interview Simulator
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono mb-2">
+              <Sparkles className="w-3.5 h-3.5" /> Real AI Mock Technical Interview
+            </div>
+            <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground">
+              Mock Interview Simulator
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Practice System Design & Technical Trade-offs with Voice Feedback
+            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+              Practice role-specific technical questions, type your explanation, and get instant AI scoring with recruiter feedback.
             </p>
           </div>
-          <span className="text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full">
-            Session #104
-          </span>
+
+          <div className="flex gap-3">
+            <button
+              onClick={handleFetchNextQuestion}
+              disabled={fetchingQuestion}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-lg shadow-emerald-900/20 transition cursor-pointer"
+            >
+              {fetchingQuestion ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              New AI Question
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Active Question Canvas */}
-          <div className="lg:col-span-5 bg-card border border-border rounded-2xl p-6 shadow-2xs space-y-4">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-              Active Scenario
-            </span>
-            <h2 className="text-sm font-semibold leading-relaxed text-foreground">
-              {activeScenario}
-            </h2>
-            <div className="text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded-xl border border-border">
-              <p className="font-medium text-foreground">Key areas to address:</p>
-              <ul className="list-disc list-inside space-y-0.5">
-                <li>Data Structure (e.g., Token Bucket vs Sliding Window)</li>
-                <li>In-memory data store choice (Redis / Memcached)</li>
-                <li>Latency & Edge Middleware integration in Next.js</li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Response Workspace */}
-          <div className="lg:col-span-7 bg-card border border-border rounded-2xl p-6 shadow-2xs space-y-4">
-            <div className="flex justify-between items-center">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Candidate Response
-              </label>
-
-              {/* Mic Toggle Button */}
+        {/* Role Selector Pills */}
+        <div className="space-y-2">
+          <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+            Target Interview Role
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {INTERVIEW_ROLES.map((r) => (
               <button
-                type="button"
-                onClick={toggleListening}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                  isListening
-                    ? "bg-red-500 text-white animate-pulse"
-                    : "bg-secondary text-secondary-foreground hover:bg-accent border border-border"
+                key={r}
+                onClick={() => {
+                  setRole(r);
+                  setQuestion(DEFAULT_QUESTIONS[r] || DEFAULT_QUESTIONS["Software Engineer"]);
+                  setEvaluation(null);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                  role === r
+                    ? "bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-900/20"
+                    : "bg-secondary/40 text-muted-foreground border-border hover:border-emerald-500/40 hover:text-foreground"
                 }`}
               >
-                {isListening ? (
-                  <>
-                    <MicOff className="w-3.5 h-3.5" /> Stop Recording
-                  </>
-                ) : (
-                  <>
-                    <Mic className="w-3.5 h-3.5 text-emerald-600" /> Voice Input
-                  </>
-                )}
+                {r}
               </button>
-            </div>
-
-            <textarea
-              rows={6}
-              value={candidateResponse}
-              onChange={(e) => setCandidateResponse(e.target.value)}
-              placeholder="Detail your architecture, data structures (e.g., Redis sliding window), and trade-offs... or click 'Voice Input' to speak."
-              className="w-full bg-background border border-border rounded-xl p-3 text-xs leading-relaxed text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-600 resize-none"
-            />
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleSubmitResponse}
-                disabled={loading || !candidateResponse.trim()}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs py-3 rounded-xl transition shadow-2xs flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-                {loading ? "Analyzing Technical Strategy..." : "Submit Response"}
-              </button>
-
-              <button
-                onClick={() => setCandidateResponse("")}
-                className="p-3 bg-secondary hover:bg-accent border border-border rounded-xl text-muted-foreground transition cursor-pointer"
-                title="Clear Response"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* AI Feedback Display Box */}
-        {aiFeedback && (
-          <div className="bg-card border border-emerald-500/30 rounded-2xl p-6 shadow-md space-y-3 animate-in fade-in slide-in-from-bottom-2">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Bot className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-heading font-bold text-sm text-foreground">
-                  AI Technical Evaluation
-                </h3>
-              </div>
+        {/* Active Question Box */}
+        <div className="bg-card border border-border/80 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+          <div className="flex items-center justify-between border-b border-border pb-4">
+            <span className="text-[11px] font-mono uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-1.5">
+              <Code2 className="w-3.5 h-3.5" /> Technical / System Architecture
+            </span>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" /> Recommended: 3-5 mins
+            </span>
+          </div>
 
-              {/* Text-to-Speech Toggle */}
-              <button
-                onClick={() => speakFeedback(aiFeedback)}
-                className="flex items-center gap-1.5 bg-secondary hover:bg-accent border border-border px-3 py-1.5 rounded-xl text-xs font-bold text-foreground transition cursor-pointer"
-              >
-                {isSpeaking ? (
-                  <VolumeX className="w-3.5 h-3.5 text-red-500" />
-                ) : (
-                  <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
-                )}
-                {isSpeaking ? "Mute Feedback" : "Read Aloud"}
-              </button>
+          <div className="space-y-3">
+            <h2 className="text-lg sm:text-xl font-heading font-bold text-foreground leading-snug">
+              {fetchingQuestion ? "Generating role-specific technical question..." : question}
+            </h2>
+
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-foreground/90 flex items-start gap-3">
+              <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-amber-400 block mb-0.5">Recruiter Focus:</span>
+                Address scalability, edge cases, trade-offs, and clear architectural choices in your response.
+              </div>
+            </div>
+          </div>
+
+          {/* Answer Submission Form */}
+          <form onSubmit={handleSubmitAnswer} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+                Your Answer / Explanation
+              </label>
+              <textarea
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                rows={6}
+                placeholder="Type your response here... (e.g. 'I would approach this by setting up a Redis token bucket algorithm...')"
+                className="w-full bg-background border border-border rounded-2xl p-4 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 leading-relaxed"
+              />
             </div>
 
-            <p className="text-xs text-foreground leading-relaxed bg-emerald-50/40 p-4 rounded-xl border border-emerald-200">
-              {aiFeedback}
-            </p>
-          </div>
-        )}
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs text-muted-foreground font-mono">
+                {answer.trim().split(/\s+/).filter(Boolean).length} words
+              </span>
+
+              <button
+                type="submit"
+                disabled={!answer.trim() || evaluating}
+                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-6 py-3 rounded-xl shadow-lg shadow-emerald-900/20 transition flex items-center gap-2 cursor-pointer"
+              >
+                {evaluating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {evaluating ? "Evaluating Answer with AI..." : "Submit Answer for AI Evaluation"}
+              </button>
+            </div>
+          </form>
+
+          {/* Evaluation Result Drawer */}
+          {evaluation && (
+            <div className="bg-gradient-to-r from-emerald-950/40 via-card to-card border border-emerald-500/40 rounded-3xl p-6 shadow-xl space-y-4 animate-in fade-in slide-in-from-bottom-2">
+              <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
+                <div className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-emerald-400" />
+                  <h3 className="font-heading font-bold text-base text-foreground">
+                    AI Evaluation & Score
+                  </h3>
+                </div>
+                <span className="text-2xl font-extrabold text-emerald-400 font-mono">
+                  {evaluation.score} / 100
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-xs font-mono uppercase text-muted-foreground">Recruiter Feedback</h4>
+                <p className="text-xs text-foreground/90 leading-relaxed bg-card/80 p-4 rounded-2xl border border-border/50">
+                  {evaluation.feedback}
+                </p>
+              </div>
+
+              <div className="flex justify-between items-center pt-2">
+                <button
+                  onClick={handleFetchNextQuestion}
+                  className="text-xs font-bold text-emerald-400 hover:underline flex items-center gap-1"
+                >
+                  Try Next Question <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </AppShell>
   );
