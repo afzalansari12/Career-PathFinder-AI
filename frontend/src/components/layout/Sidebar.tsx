@@ -16,7 +16,7 @@ import {
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Resume", href: "/resume", icon: FileText },
+  { label: "Resume", href: "/dashboard/resume", icon: FileText },
   { label: "Roadmap", href: "/roadmap", icon: Map },
   { label: "Jobs", href: "/jobs", icon: Briefcase },
   { label: "Interview", href: "/interview", icon: Video },

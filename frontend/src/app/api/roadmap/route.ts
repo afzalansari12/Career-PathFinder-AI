@@ -11,25 +11,35 @@ export async function POST(req: NextRequest) {
 
     const { targetRole, currentSkills } = await req.json();
 
-    const prompt = `You are a Principal Software Architect and Senior Tech Career Advisor. 
-Perform a comprehensive technical gap analysis for a candidate targeting the role "${targetRole || "Full Stack Developer"}" given their known stack "${currentSkills || "React, C++, Node.js"}".
+    const prompt = `
+      You are an elite Tech Career Coach and Engineering Director.
+      Target Role: "${targetRole || "Full Stack Developer"}"
+      Current Candidate Skills: "${currentSkills || "JavaScript, HTML, CSS"}"
 
-Return strictly valid JSON with this exact schema:
-{
-  "role": "${targetRole}",
-  "estimatedTime": "10 Weeks",
-  "overallAnalysis": "A 2-sentence breakdown of the candidate's core architectural strengths and missing critical production skills.",
-  "phases": [
-    {
-      "phaseNumber": 1,
-      "title": "Phase Title",
-      "duration": "2 Weeks",
-      "skillGapSummary": "Why this phase is necessary based on their known stack.",
-      "topics": ["Deep technical topic 1", "Deep technical topic 2", "Deep technical topic 3"],
-      "projectIdea": "Production-grade portfolio project title and description."
-    }
-  ]
-}`;
+      Generate a structured 4-phase learning roadmap to bridge the candidate's skill gap.
+
+      Return strictly valid JSON with this exact structure:
+      {
+        "role": "${targetRole}",
+        "estimatedTime": "12 Weeks",
+        "phases":
+          {
+            "phaseNumber": 1,
+            "title": "Core Foundation & Deep Dive",
+            "duration": "Weeks 1-3",
+            "topics": ["Advanced TypeScript", "State Management", "Next.js App Router"],
+            "projectIdea": "Build a real-time collaborative dashboard."
+          },
+          {
+            "phaseNumber": 2,
+            "title": "Backend Architecture & APIs",
+            "duration": "Weeks 4-6",
+            "topics": ["PostgreSQL & Supabase", "REST & GraphQL", "Authentication & Middleware"],
+            "projectIdea": "Implement full auth with RBAC and database row-level security."
+          }
+        ]
+      }
+    `;
 
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",

@@ -30,6 +30,7 @@ export default function ChatBot() {
     if (!input.trim() || loading) return;
 
     const userMsg = input.trim();
+    const historyForRequest = messages; // conversation so far, before this new turn
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
     setLoading(true);
@@ -38,7 +39,7 @@ export default function ChatBot() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg }),
+        body: JSON.stringify({ message: userMsg, history: historyForRequest }),
       });
 
       const data = await res.json();

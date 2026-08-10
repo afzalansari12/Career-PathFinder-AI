@@ -155,7 +155,7 @@ export default function DashboardPage() {
                 </Link>
 
                 <Link
-                  href="/resume"
+                  href="/dashboard/resume"
                   className="mt-5 flex items-center gap-4 group p-2 -mx-2 rounded-xl hover:bg-accent/40 transition"
                 >
                   <div className="relative w-20 h-20 shrink-0 flex items-center justify-center rounded-full border-4 border-emerald-500 bg-emerald-50/50 group-hover:scale-105 transition-transform">
@@ -237,7 +237,7 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Link
-                href="/resume"
+                href="/dashboard/resume"
                 className="p-4 bg-card hover:bg-secondary/60 border border-border hover:border-primary/40 rounded-2xl transition group flex flex-col justify-between h-32 shadow-2xs"
               >
                 <div>
