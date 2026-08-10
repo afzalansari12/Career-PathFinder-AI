@@ -1,5 +1,10 @@
 # CareerPathfinder AI — Prototype Submission Write-Up
 
+> **Official Prototype Submission Documentation**  
+> Comprehensive overview of product architecture, AI/ML pipeline, UX design decisions, and judge walkthrough guide.
+
+---
+
 ## 🌐 Deliverable Links
 - **Live Production App URL**: [https://career-path-finder-ai-three.vercel.app](https://career-path-finder-ai-three.vercel.app)
 - **1-Click Instant Demo Link (Evaluator Access)**: [https://career-path-finder-ai-three.vercel.app/dashboard?demo=true](https://career-path-finder-ai-three.vercel.app/dashboard?demo=true)
