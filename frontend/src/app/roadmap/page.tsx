@@ -1,7 +1,7 @@
 // frontend/src/app/roadmap/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AppShell from "@/components/layout/AppShell";
 import {
   Sparkles,
@@ -10,9 +10,7 @@ import {
   Clock,
   Target,
   Layers,
-  ArrowRight,
   Loader2,
-  ExternalLink,
   ChevronRight,
   Code2,
   Trophy,
@@ -74,6 +72,14 @@ export default function RoadmapPage() {
   const [milestones, setMilestones] = useState<Milestone[]>(DEFAULT_MILESTONES);
   const [generating, setGenerating] = useState(false);
   const [activeStep, setActiveStep] = useState<number>(2);
+
+  // Sync preferred target role from Dashboard instant storage
+  useEffect(() => {
+    const savedRole = localStorage.getItem("preferred_target_role");
+    if (savedRole) {
+      setTargetRole(savedRole);
+    }
+  }, []);
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,23 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppShell from "@/components/layout/AppShell";
+import UpgradeProModal from "@/components/pro/UpgradeProModal";
+import { getProStatus } from "@/lib/proStatus";
 import { useUser } from "@clerk/nextjs";
 import {
   UserCircle,
-  Mail,
-  MapPin,
   Briefcase,
-  Code2,
+  MapPin,
   Save,
   CheckCircle2,
   Sparkles,
   ShieldCheck,
+  Crown,
+  ArrowRight,
 } from "lucide-react";
 
 export default function ProfilePage() {
   const { user } = useUser();
   const [isSaved, setIsSaved] = useState(false);
+  const [isPro, setIsPro] = useState(false);
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+
+  const userId = user?.id || user?.primaryEmailAddress?.emailAddress;
+
+  const checkPro = () => {
+    setIsPro(getProStatus(userId));
+  };
+
+  useEffect(() => {
+    checkPro();
+    window.addEventListener("pro_status_updated", checkPro);
+    return () => window.removeEventListener("pro_status_updated", checkPro);
+  }, [userId]);
 
   // Profile Form State
   const [fullName, setFullName] = useState(user?.fullName || "Afzal Ansari");
@@ -37,21 +53,42 @@ export default function ProfilePage() {
     <AppShell>
       {/* Top Controls Bar */}
       <div className="-mt-6 -mx-6 lg:-mt-10 lg:-mx-10 border-b border-border bg-card px-6 py-3 mb-6 flex items-center justify-between shadow-2xs">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <Sparkles className="w-3.5 h-3.5" /> Candidate Profile & Targeting
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <Sparkles className="w-3.5 h-3.5" /> Candidate Profile & Targeting
+          </span>
+          {isPro ? (
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              <Crown className="w-3.5 h-3.5 text-amber-300" /> PRO Candidate
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono font-bold bg-secondary text-muted-foreground border border-border">
+              Free Candidate
+            </span>
+          )}
+        </div>
 
-        <button
-          onClick={handleSave}
-          className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl transition shadow-2xs cursor-pointer"
-        >
-          <Save className="w-3.5 h-3.5" /> {isSaved ? "Saved!" : "Save Profile"}
-        </button>
+        <div className="flex items-center gap-3">
+          {!isPro && (
+            <button
+              onClick={() => setIsUpgradeOpen(true)}
+              className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-4 py-1.5 rounded-xl transition shadow-sm cursor-pointer"
+            >
+              <Crown className="w-3.5 h-3.5" /> Upgrade to PRO
+            </button>
+          )}
+
+          <button
+            onClick={handleSave}
+            className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl transition shadow-2xs cursor-pointer"
+          >
+            <Save className="w-3.5 h-3.5" /> {isSaved ? "Saved!" : "Save Profile"}
+          </button>
+        </div>
       </div>
 
       {/* Split Dual-Pane View */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
         {/* Left Sticky Sidebar: User Identity Card */}
         <div className="lg:col-span-4 bg-card border border-border rounded-2xl p-6 shadow-2xs space-y-6 sticky top-6">
           <div className="text-center space-y-3">
@@ -68,6 +105,34 @@ export default function ProfilePage() {
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">{email}</p>
             </div>
+          </div>
+
+          {/* Tier Status Box */}
+          <div className="p-3.5 rounded-2xl bg-secondary/40 border border-border/80 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground font-mono uppercase text-[10px]">Subscription Plan</span>
+              {isPro ? (
+                <span className="font-bold text-amber-300 flex items-center gap-1 font-mono">
+                  <Crown className="w-3.5 h-3.5" /> PRO ACTIVE
+                </span>
+              ) : (
+                <span className="font-bold text-muted-foreground font-mono">FREE TIER</span>
+              )}
+            </div>
+
+            {!isPro ? (
+              <button
+                onClick={() => setIsUpgradeOpen(true)}
+                className="w-full py-1.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <span>Upgrade for Unlimited Scans</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <p className="text-[10px] text-emerald-400 font-mono text-center">
+                👑 Unlimited AI Compute & PDF Export Unlocked
+              </p>
+            )}
           </div>
 
           <hr className="border-border" />
@@ -190,8 +255,13 @@ export default function ProfilePage() {
             </div>
           </form>
         </div>
-
       </div>
+
+      <UpgradeProModal
+        isOpen={isUpgradeOpen}
+        onClose={() => setIsUpgradeOpen(false)}
+        onSuccess={() => checkPro()}
+      />
     </AppShell>
   );
 }
