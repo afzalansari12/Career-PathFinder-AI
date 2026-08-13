@@ -12,37 +12,54 @@ import {
   Target,
   Briefcase,
   Video,
-  Bot,
   TrendingUp,
-  Award,
-  CheckCircle2,
   Zap,
+  Upload,
 } from "lucide-react";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ demo?: string }>;
+}) {
+  const resolvedParams = await searchParams;
+  const isDemo = resolvedParams?.demo === "true";
+
   let userId: string | null = null;
   let profile: any = null;
+  let latestEval: any = null;
 
   try {
     const authResult = await auth();
     userId = authResult.userId;
     if (userId) {
       const supabase = await createSupabaseClient();
-      const { data } = await supabase
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
         .eq("clerk_id", userId)
         .maybeSingle();
-      profile = data;
+      profile = profileData;
+
+      const { data: evalData } = await supabase
+        .from("ats_evaluations")
+        .select("overall_score, target_role, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      latestEval = evalData;
     }
   } catch (err) {
     console.warn("Dashboard Auth/Supabase warning:", err);
   }
 
-  const atsScore = profile?.ats_score || 84;
-  const interviewReadiness = profile?.interview_readiness || 88;
+  // Determine actual ATS score vs new user vs demo
+  const userScore = profile?.ats_score || latestEval?.overall_score || null;
+  const atsScore = userScore !== null ? userScore : isDemo ? 84 : null;
+  const interviewReadiness = profile?.interview_readiness || (isDemo ? 88 : null);
   const matchedRolesCount = profile?.matched_roles_count || 14;
-  const targetRole = profile?.target_role || "Full Stack Engineer";
+  const targetRole = latestEval?.target_role || profile?.target_role || "Full Stack Engineer";
 
   return (
     <AppShell>
@@ -51,7 +68,7 @@ export default async function DashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono mb-2">
-              <Sparkles className="w-3.5 h-3.5" /> Career Analytics Overview
+              <Sparkles className="w-3.5 h-3.5" /> Candidate Analytics Command Center
             </div>
             <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground">
               Candidate Command Center
@@ -80,14 +97,26 @@ export default async function DashboardPage() {
               <FileText className="w-4 h-4 text-emerald-400" />
             </div>
             <div className="text-4xl font-extrabold text-emerald-400 font-mono tracking-tight">
-              {atsScore} <span className="text-sm font-normal text-muted-foreground">/ 100</span>
+              {atsScore !== null ? (
+                <>
+                  {atsScore} <span className="text-sm font-normal text-muted-foreground">/ 100</span>
+                </>
+              ) : (
+                <span className="text-muted-foreground font-normal text-3xl">-- / 100</span>
+              )}
             </div>
             <div className="flex items-center justify-between text-xs pt-1">
-              <span className="text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-mono text-[10px]">
-                +6% vs target benchmark
-              </span>
+              {atsScore !== null ? (
+                <span className="text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-mono text-[10px]">
+                  {isDemo ? "Sample Demo Benchmark" : "Verified Resume Score"}
+                </span>
+              ) : (
+                <span className="text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 font-mono text-[10px] flex items-center gap-1">
+                  <Upload className="w-3 h-3" /> No Resume Audited
+                </span>
+              )}
               <Link href="/dashboard/resume" className="text-muted-foreground hover:text-foreground underline underline-offset-4">
-                View Audit ↗
+                {atsScore !== null ? "View Audit ↗" : "Audit Resume ↗"}
               </Link>
             </div>
           </div>
@@ -99,11 +128,11 @@ export default async function DashboardPage() {
               <TrendingUp className="w-4 h-4 text-blue-400" />
             </div>
             <div className="text-4xl font-extrabold text-blue-400 font-mono tracking-tight">
-              {interviewReadiness}%
+              {interviewReadiness !== null ? `${interviewReadiness}%` : "-- %"}
             </div>
             <div className="flex items-center justify-between text-xs pt-1">
               <span className="text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20 font-mono text-[10px]">
-                Ready for Technical Screening
+                {interviewReadiness !== null ? "Ready for Screening" : "Pending AI Practice"}
               </span>
               <Link href="/interview" className="text-muted-foreground hover:text-foreground underline underline-offset-4">
                 Practice Mock ↗
