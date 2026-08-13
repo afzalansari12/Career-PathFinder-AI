@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { createSupabaseClient } from "@/lib/supabase/server";
 import AppShell from "@/components/layout/AppShell";
 import Link from "next/link";
+import TargetRoleSelector from "@/components/dashboard/TargetRoleSelector";
 import {
   FileText,
   ArrowRight,
@@ -73,9 +74,7 @@ export default async function DashboardPage({
             <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground">
               Candidate Command Center
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Target Position: <span className="text-emerald-400 font-semibold">{targetRole}</span>
-            </p>
+            <TargetRoleSelector initialRole={targetRole} />
           </div>
 
           <div className="flex flex-wrap gap-3">
