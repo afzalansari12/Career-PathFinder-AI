@@ -123,15 +123,15 @@ export default async function DashboardPage({
         {/* Top 3 Score Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* ATS Score Card */}
-          <div className="relative overflow-hidden rounded-3xl bg-card/90 border border-border/80 hover:border-emerald-500/50 p-6 shadow-xl space-y-4 backdrop-blur-md group transition-all duration-300 hover:shadow-emerald-950/20">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all" />
+          <div className="relative overflow-hidden rounded-3xl bg-card/90 border border-border/80 hover:border-amber-500/50 p-6 shadow-xl space-y-4 backdrop-blur-md group transition-all duration-300 hover:shadow-amber-950/20">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all" />
             <div className="flex justify-between items-center text-sm font-mono font-semibold uppercase tracking-wider text-muted-foreground">
               <span>ATS Match Score</span>
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 <FileText className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-5xl font-extrabold text-emerald-400 font-mono tracking-tight flex items-baseline gap-2">
+            <div className="text-5xl font-extrabold text-amber-400 font-mono tracking-tight flex items-baseline gap-2">
               {atsScore !== null ? (
                 <>
                   <span>{atsScore}</span>
@@ -146,11 +146,11 @@ export default async function DashboardPage({
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-mono text-muted-foreground font-medium">
                 <span>ATS Optimization Level</span>
-                <span className="text-emerald-400 font-bold">{atsScore !== null ? `${atsScore}%` : "0%"}</span>
+                <span className="text-amber-400 font-bold">{atsScore !== null ? `${atsScore}%` : "0%"}</span>
               </div>
               <div className="w-full bg-secondary/60 h-3 rounded-full overflow-hidden p-0.5 border border-border/40">
                 <div
-                  className="bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 h-full rounded-full transition-all duration-1000 shadow-sm"
+                  className="bg-gradient-to-r from-amber-500 via-orange-400 to-yellow-300 h-full rounded-full transition-all duration-1000 shadow-sm"
                   style={{ width: `${atsScore || 0}%` }}
                 />
               </div>
@@ -158,7 +158,7 @@ export default async function DashboardPage({
 
             <div className="flex items-center justify-between text-xs pt-1">
               {atsScore !== null ? (
-                <span className="text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 font-mono text-xs font-semibold">
+                <span className="text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 font-mono text-xs font-semibold">
                   {isDemo ? "Sample Demo Benchmark" : "Verified Resume Score"}
                 </span>
               ) : (
@@ -166,7 +166,7 @@ export default async function DashboardPage({
                   <Upload className="w-3.5 h-3.5" /> No Resume Audited
                 </span>
               )}
-              <Link href="/dashboard/resume" className="text-muted-foreground hover:text-emerald-400 font-bold underline underline-offset-4 transition-colors">
+              <Link href="/dashboard/resume" className="text-muted-foreground hover:text-amber-400 font-bold underline underline-offset-4 transition-colors">
                 {atsScore !== null ? "View Audit ↗" : "Audit Resume ↗"}
               </Link>
             </div>
