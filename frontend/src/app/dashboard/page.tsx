@@ -97,7 +97,7 @@ export default async function DashboardPage({
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-mono font-semibold">
                 <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" /> AI Candidate Accelerator Core v2.0
               </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-extrabold tracking-tight text-foreground">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-heading font-bold tracking-tight text-foreground">
                 Candidate Command Center
               </h1>
               <TargetRoleSelector initialRole={targetRole} />
