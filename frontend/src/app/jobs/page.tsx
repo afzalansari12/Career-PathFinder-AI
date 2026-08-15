@@ -208,7 +208,7 @@ export default function JobsPage() {
 
           {/* Quick Role Tags */}
           <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
-            <span className="text-[11px] font-mono text-muted-foreground self-center mr-1">Popular:</span>
+            <span className="text-xs font-mono font-semibold text-muted-foreground self-center mr-1">Popular:</span>
             {POPULAR_ROLES.map((role) => (
               <button
                 key={role}
@@ -216,7 +216,7 @@ export default function JobsPage() {
                   setSearchQuery(role);
                   fetchJobs(role);
                 }}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                   searchQuery === role
                     ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
                     : "bg-secondary/40 text-muted-foreground border-border hover:text-foreground"
@@ -235,10 +235,10 @@ export default function JobsPage() {
             {loading ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground space-y-3 bg-card border border-border/80 rounded-3xl">
                 <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
-                <p className="text-xs font-medium">Aggregating live job listings...</p>
+                <p className="text-sm font-semibold">Aggregating live job listings...</p>
               </div>
             ) : filteredJobs.length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground bg-card border border-border rounded-3xl">
+              <div className="p-8 text-center text-sm font-medium text-muted-foreground bg-card border border-border rounded-3xl">
                 No matching positions found. Try expanding your search terms.
               </div>
             ) : (
@@ -253,11 +253,11 @@ export default function JobsPage() {
                   }`}
                 >
                   <div className="flex justify-between items-start gap-2">
-                    <h3 className="font-heading font-bold text-sm text-foreground hover:text-emerald-400 transition">
+                    <h3 className="font-heading font-bold text-base text-foreground hover:text-emerald-400 transition">
                       {job.title}
                     </h3>
                     {job.matchScore !== undefined && (
-                      <span className="text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">
+                      <span className="text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full shrink-0">
                         {job.matchScore}% Match
                       </span>
                     )}

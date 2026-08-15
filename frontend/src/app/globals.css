@@ -118,6 +118,15 @@
   --sidebar-ring: #10B981;
 }
 
+html {
+  font-size: 17.5px;
+}
+
+body {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

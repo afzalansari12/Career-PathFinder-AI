@@ -157,7 +157,7 @@ export default function RoadmapPage() {
         <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-4">
           <form onSubmit={handleGenerate} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
             <div className="md:col-span-5 space-y-1.5">
-              <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+              <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
                 Target Role
               </label>
               <input
@@ -165,12 +165,12 @@ export default function RoadmapPage() {
                 value={targetRole}
                 onChange={(e) => setTargetRole(e.target.value)}
                 placeholder="e.g. Full Stack Engineer, AI Engineer, Data Scientist"
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
 
             <div className="md:col-span-4 space-y-1.5">
-              <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+              <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
                 Current Known Skills
               </label>
               <input
@@ -178,7 +178,7 @@ export default function RoadmapPage() {
                 value={knownStack}
                 onChange={(e) => setKnownStack(e.target.value)}
                 placeholder="e.g. JavaScript, React, Python, Git"
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
 

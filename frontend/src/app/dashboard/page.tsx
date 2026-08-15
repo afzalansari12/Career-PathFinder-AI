@@ -85,15 +85,17 @@ export default async function DashboardPage({
     <AppShell>
       <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-8">
         {/* Top Hero Banner with Mesh Glow */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-card via-card/95 to-emerald-950/30 border border-emerald-500/30 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
-          <div className="absolute -top-28 -right-28 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-28 -left-28 w-80 h-80 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-30 rounded-3xl bg-gradient-to-br from-card via-card/95 to-emerald-950/30 border border-emerald-500/30 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+          <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+            <div className="absolute -top-28 -right-28 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl" />
+            <div className="absolute -bottom-28 -left-28 w-80 h-80 bg-blue-500/15 rounded-full blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
+          </div>
 
           <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" /> AI Candidate Accelerator Core v2.0
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-mono font-semibold">
+                <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" /> AI Candidate Accelerator Core v2.0
               </div>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-extrabold tracking-tight text-foreground">
                 Candidate Command Center
@@ -104,13 +106,13 @@ export default async function DashboardPage({
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/dashboard/resume"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold shadow-xl shadow-emerald-900/40 hover:shadow-emerald-900/60 transition-all duration-300 transform hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-sm font-bold shadow-xl shadow-emerald-900/40 hover:shadow-emerald-900/60 transition-all duration-300 transform hover:-translate-y-0.5"
               >
                 <FileText className="w-4 h-4" /> Run ATS Resume Audit
               </Link>
               <Link
                 href="/roadmap"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-card/90 border border-border hover:border-emerald-500/50 text-foreground text-xs font-semibold shadow-lg transition-all duration-300"
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-card/90 border border-border hover:border-emerald-500/50 text-foreground text-sm font-bold shadow-lg transition-all duration-300"
               >
                 <Target className="w-4 h-4 text-emerald-400" /> View Career Roadmap
               </Link>
@@ -123,7 +125,7 @@ export default async function DashboardPage({
           {/* ATS Score Card */}
           <div className="relative overflow-hidden rounded-3xl bg-card/90 border border-border/80 hover:border-emerald-500/50 p-6 shadow-xl space-y-4 backdrop-blur-md group transition-all duration-300 hover:shadow-emerald-950/20">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all" />
-            <div className="flex justify-between items-center text-xs font-mono uppercase tracking-wider text-muted-foreground">
+            <div className="flex justify-between items-center text-sm font-mono font-semibold uppercase tracking-wider text-muted-foreground">
               <span>ATS Match Score</span>
               <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 <FileText className="w-4 h-4" />
@@ -133,7 +135,7 @@ export default async function DashboardPage({
               {atsScore !== null ? (
                 <>
                   <span>{atsScore}</span>
-                  <span className="text-base font-normal text-muted-foreground">/ 100</span>
+                  <span className="text-lg font-normal text-muted-foreground">/ 100</span>
                 </>
               ) : (
                 <span className="text-muted-foreground font-normal text-3xl">-- / 100</span>
@@ -142,11 +144,11 @@ export default async function DashboardPage({
 
             {/* Visual Progress Meter */}
             <div className="space-y-1.5">
-              <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
+              <div className="flex justify-between text-xs font-mono text-muted-foreground font-medium">
                 <span>ATS Optimization Level</span>
                 <span className="text-emerald-400 font-bold">{atsScore !== null ? `${atsScore}%` : "0%"}</span>
               </div>
-              <div className="w-full bg-secondary/60 h-2.5 rounded-full overflow-hidden p-0.5 border border-border/40">
+              <div className="w-full bg-secondary/60 h-3 rounded-full overflow-hidden p-0.5 border border-border/40">
                 <div
                   className="bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 h-full rounded-full transition-all duration-1000 shadow-sm"
                   style={{ width: `${atsScore || 0}%` }}
@@ -156,15 +158,15 @@ export default async function DashboardPage({
 
             <div className="flex items-center justify-between text-xs pt-1">
               {atsScore !== null ? (
-                <span className="text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 font-mono text-[10px] font-semibold">
+                <span className="text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 font-mono text-xs font-semibold">
                   {isDemo ? "Sample Demo Benchmark" : "Verified Resume Score"}
                 </span>
               ) : (
-                <span className="text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 font-mono text-[10px] font-semibold flex items-center gap-1.5">
-                  <Upload className="w-3 h-3" /> No Resume Audited
+                <span className="text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 font-mono text-xs font-semibold flex items-center gap-1.5">
+                  <Upload className="w-3.5 h-3.5" /> No Resume Audited
                 </span>
               )}
-              <Link href="/dashboard/resume" className="text-muted-foreground hover:text-emerald-400 font-semibold underline underline-offset-4 transition-colors">
+              <Link href="/dashboard/resume" className="text-muted-foreground hover:text-emerald-400 font-bold underline underline-offset-4 transition-colors">
                 {atsScore !== null ? "View Audit ↗" : "Audit Resume ↗"}
               </Link>
             </div>
@@ -173,7 +175,7 @@ export default async function DashboardPage({
           {/* Interview Readiness Card */}
           <div className="relative overflow-hidden rounded-3xl bg-card/90 border border-border/80 hover:border-blue-500/50 p-6 shadow-xl space-y-4 backdrop-blur-md group transition-all duration-300 hover:shadow-blue-950/20">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all" />
-            <div className="flex justify-between items-center text-xs font-mono uppercase tracking-wider text-muted-foreground">
+            <div className="flex justify-between items-center text-sm font-mono font-semibold uppercase tracking-wider text-muted-foreground">
               <span>Interview Readiness</span>
               <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
                 <TrendingUp className="w-4 h-4" />
@@ -184,11 +186,11 @@ export default async function DashboardPage({
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
+              <div className="flex justify-between text-xs font-mono text-muted-foreground font-medium">
                 <span>Technical Screening Mastery</span>
                 <span className="text-blue-400 font-bold">{interviewReadiness !== null ? `${interviewReadiness}%` : "0%"}</span>
               </div>
-              <div className="w-full bg-secondary/60 h-2.5 rounded-full overflow-hidden p-0.5 border border-border/40">
+              <div className="w-full bg-secondary/60 h-3 rounded-full overflow-hidden p-0.5 border border-border/40">
                 <div
                   className="bg-gradient-to-r from-blue-500 via-indigo-400 to-sky-300 h-full rounded-full transition-all duration-1000 shadow-sm"
                   style={{ width: `${interviewReadiness || 0}%` }}
@@ -197,10 +199,10 @@ export default async function DashboardPage({
             </div>
 
             <div className="flex items-center justify-between text-xs pt-1">
-              <span className="text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 font-mono text-[10px] font-semibold">
+              <span className="text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 font-mono text-xs font-semibold">
                 {interviewReadiness !== null ? "Ready for Technical Round" : "Pending Practice"}
               </span>
-              <Link href="/interview" className="text-muted-foreground hover:text-blue-400 font-semibold underline underline-offset-4 transition-colors">
+              <Link href="/interview" className="text-muted-foreground hover:text-blue-400 font-bold underline underline-offset-4 transition-colors">
                 Practice Mock ↗
               </Link>
             </div>
@@ -209,7 +211,7 @@ export default async function DashboardPage({
           {/* Matched Live Openings Card */}
           <div className="relative overflow-hidden rounded-3xl bg-card/90 border border-border/80 hover:border-purple-500/50 p-6 shadow-xl space-y-4 backdrop-blur-md group transition-all duration-300 hover:shadow-purple-950/20">
             <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all" />
-            <div className="flex justify-between items-center text-xs font-mono uppercase tracking-wider text-muted-foreground">
+            <div className="flex justify-between items-center text-sm font-mono font-semibold uppercase tracking-wider text-muted-foreground">
               <span>Matched Tech Openings</span>
               <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
                 <Briefcase className="w-4 h-4" />
@@ -220,20 +222,20 @@ export default async function DashboardPage({
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
+              <div className="flex justify-between text-xs font-mono text-muted-foreground font-medium">
                 <span>Direct Verified Jobs</span>
                 <span className="text-purple-400 font-bold">{matchedRolesCount} Jobs</span>
               </div>
-              <div className="w-full bg-secondary/60 h-2.5 rounded-full overflow-hidden p-0.5 border border-border/40">
+              <div className="w-full bg-secondary/60 h-3 rounded-full overflow-hidden p-0.5 border border-border/40">
                 <div className="bg-gradient-to-r from-purple-500 via-pink-400 to-purple-300 h-full rounded-full w-4/5 shadow-sm" />
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs pt-1">
-              <span className="text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20 font-mono text-[10px] font-semibold">
+              <span className="text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20 font-mono text-xs font-semibold">
                 Direct Apply Redirection
               </span>
-              <Link href="/jobs" className="text-muted-foreground hover:text-purple-400 font-semibold underline underline-offset-4 transition-colors">
+              <Link href="/jobs" className="text-muted-foreground hover:text-purple-400 font-bold underline underline-offset-4 transition-colors">
                 Explore Jobs ↗
               </Link>
             </div>
@@ -247,37 +249,37 @@ export default async function DashboardPage({
             <div className="flex items-center justify-between border-b border-border/50 pb-3">
               <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-heading font-bold text-foreground">Candidate Skill Matrix & Gaps</h3>
+                <h3 className="text-base font-heading font-bold text-foreground">Candidate Skill Matrix & Gaps</h3>
               </div>
-              <span className="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="text-xs font-mono uppercase px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
                 {targetRole}
               </span>
             </div>
 
             <div className="space-y-4">
               <div>
-                <span className="text-xs font-mono text-muted-foreground block mb-2">Detected Technical Skills:</span>
+                <span className="text-xs font-mono font-semibold text-muted-foreground block mb-2">Detected Technical Skills:</span>
                 <div className="flex flex-wrap gap-2">
                   {detectedSkills.map((skill) => (
                     <span
                       key={skill}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-medium"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-sm font-medium"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> {skill}
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {skill}
                     </span>
                   ))}
                 </div>
               </div>
 
               <div>
-                <span className="text-xs font-mono text-muted-foreground block mb-2">Recommended Skills to Acquire (+15% ATS Boost):</span>
+                <span className="text-xs font-mono font-semibold text-muted-foreground block mb-2">Recommended Skills to Acquire (+15% ATS Boost):</span>
                 <div className="flex flex-wrap gap-2">
                   {missingSkills.map((skill) => (
                     <span
                       key={skill}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-medium"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 text-sm font-medium"
                     >
-                      <Flame className="w-3.5 h-3.5 text-amber-400" /> {skill}
+                      <Flame className="w-4 h-4 text-amber-400" /> {skill}
                     </span>
                   ))}
                 </div>
@@ -290,17 +292,17 @@ export default async function DashboardPage({
             <div className="space-y-3">
               <div className="flex items-center gap-2 border-b border-border/50 pb-3">
                 <Award className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-heading font-bold text-foreground">Recommended Next Steps</h3>
+                <h3 className="text-base font-heading font-bold text-foreground">Recommended Next Steps</h3>
               </div>
 
               <div className="space-y-2.5">
                 <Link
                   href="/dashboard/resume"
-                  className="flex items-center justify-between p-3 rounded-2xl bg-secondary/40 hover:bg-emerald-500/10 border border-border/50 hover:border-emerald-500/40 transition group"
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-secondary/40 hover:bg-emerald-500/10 border border-border/50 hover:border-emerald-500/40 transition group"
                 >
                   <div className="flex items-center gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span className="text-xs font-medium text-foreground group-hover:text-emerald-400 transition-colors">
+                    <span className="text-sm font-semibold text-foreground group-hover:text-emerald-400 transition-colors">
                       Run ATS Resume Scan
                     </span>
                   </div>
@@ -309,11 +311,11 @@ export default async function DashboardPage({
 
                 <Link
                   href="/roadmap"
-                  className="flex items-center justify-between p-3 rounded-2xl bg-secondary/40 hover:bg-emerald-500/10 border border-border/50 hover:border-emerald-500/40 transition group"
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-secondary/40 hover:bg-emerald-500/10 border border-border/50 hover:border-emerald-500/40 transition group"
                 >
                   <div className="flex items-center gap-2.5">
                     <Target className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span className="text-xs font-medium text-foreground group-hover:text-emerald-400 transition-colors">
+                    <span className="text-sm font-semibold text-foreground group-hover:text-emerald-400 transition-colors">
                       Generate Target Role Roadmap
                     </span>
                   </div>

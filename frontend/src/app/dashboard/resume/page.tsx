@@ -205,7 +205,7 @@ export default function ResumePage() {
                 </div>
                 <button
                   onClick={() => setIsUpgradeOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-[11px] shrink-0 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shrink-0 cursor-pointer transition"
                 >
                   Upgrade Now
                 </button>
@@ -214,7 +214,7 @@ export default function ResumePage() {
 
             <form onSubmit={handleUpload} className="space-y-6 max-w-2xl mx-auto">
               <div className="space-y-2">
-                <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">
                   Target Role
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -223,7 +223,7 @@ export default function ResumePage() {
                       key={role}
                       type="button"
                       onClick={() => setTargetRole(role)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                      className={`px-3.5 py-2 rounded-xl text-sm font-semibold border transition-all ${
                         targetRole === role
                           ? "bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-900/20"
                           : "bg-secondary/50 text-muted-foreground border-border hover:border-emerald-500/40 hover:text-foreground"
