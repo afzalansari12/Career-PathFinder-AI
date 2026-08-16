@@ -40,6 +40,11 @@ const ACCOUNT_NAV = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const isDemo = searchParams?.get("demo") === "true";
+
+  const getHref = (baseHref: string) => (isDemo ? `${baseHref}?demo=true` : baseHref);
+
   const { user } = useUser();
   const [isPro, setIsPro] = useState(false);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
@@ -63,7 +68,7 @@ export default function Sidebar() {
           {/* Brand Logo Header */}
           <div className="px-2 flex items-center justify-between border-b border-sidebar-border/60 pb-4">
             <Link
-              href="/dashboard"
+              href={getHref("/dashboard")}
               className="group font-heading text-lg font-extrabold tracking-tight text-foreground flex items-center gap-2"
             >
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center shadow-lg shadow-emerald-950/40 group-hover:scale-105 transition-transform">
@@ -98,11 +103,12 @@ export default function Sidebar() {
             {MAIN_NAV.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
+              const targetHref = getHref(item.href);
 
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={targetHref}
                   className={cn(
                     "group relative flex items-center justify-between rounded-2xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200",
                     isActive
@@ -148,11 +154,12 @@ export default function Sidebar() {
             {AI_TOOLS_NAV.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
+              const targetHref = getHref(item.href);
 
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={targetHref}
                   className={cn(
                     "group relative flex items-center justify-between rounded-2xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200",
                     isActive
@@ -220,11 +227,12 @@ export default function Sidebar() {
             {ACCOUNT_NAV.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
+              const targetHref = getHref(item.href);
 
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={targetHref}
                   className={cn(
                     "group relative flex items-center justify-between rounded-2xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200",
                     isActive

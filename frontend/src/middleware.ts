@@ -7,14 +7,16 @@ export default clerkMiddleware(async (auth, req) => {
   const { userId } = await auth();
 
   const hasDemoParam = req.nextUrl.searchParams.get("demo") === "true";
+  const referer = req.headers.get("referer") || "";
+  const isDemoReferer = referer.includes("demo=true");
 
   // If logged-in user with Clerk account hits root "/", redirect to /dashboard
   if (userId && req.nextUrl.pathname === "/") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  // If unauthenticated user accesses protected routes, require login unless ?demo=true is explicitly passed
-  if (!userId && !hasDemoParam && !isPublicRoute(req)) {
+  // Allow access if user is authenticated OR has demo=true param OR coming from a demo session
+  if (!userId && !hasDemoParam && !isDemoReferer && !isPublicRoute(req)) {
     return (await auth()).redirectToSignIn();
   }
 });
