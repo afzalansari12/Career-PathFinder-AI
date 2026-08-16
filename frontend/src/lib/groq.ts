@@ -1,11 +1,10 @@
 // frontend/src/lib/groq.ts
 import Groq from "groq-sdk";
+import type { ATSEvaluationResult } from "./ats/engine";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
-
-import type { ATSEvaluationResult } from "./ats/engine";
 
 export interface ResumeFeedback {
   summary: string;
@@ -13,49 +12,40 @@ export interface ResumeFeedback {
   improvements: string[];
 }
 
-/**
- * IMPORTANT: this does NOT calculate a score. `evaluation` was already
- * computed by DeterministicATSEngine.evaluate() before this is ever called.
- * The model only turns that finished, rule-based result into plain-English
- * narrative — there's no field in the schema below for it to write a score
- * into, and the prompt explicitly forbids inventing one.
- */
 export async function generateResumeFeedback(
   evaluation: ATSEvaluationResult,
-  targetRole: string = "Software Engineer"
+  jobDescription: string = ""
 ): Promise<ResumeFeedback> {
   const prompt = `
 You are an expert Executive Resume Reviewer and Senior Technical Recruiter.
 
-You are given a DETERMINISTIC ATS analysis below, already computed by a rules
-engine. Do not recalculate, restate, or contradict the score. Your only job
-is to turn this structured data into clear, specific, human feedback for a
-candidate targeting: ${targetRole}.
+You are given a DETERMINISTIC ATS analysis computed by a rules engine for a candidate's resume compared directly against a specific TARGET JOB DESCRIPTION.
+Do not recalculate or contradict the score. Your job is to explain the alignment and turn this structured data into actionable, recruiter-level feedback.
 
-Overall Score: ${evaluation.overallScore}/100
-Structure: ${evaluation.breakdown.structureScore}/100
-Keywords: ${evaluation.breakdown.keywordScore}/100
-Impact: ${evaluation.breakdown.impactScore}/100
-Formatting: ${evaluation.breakdown.formattingScore}/100
+Target Job Description Context:
+"${jobDescription || "Full Stack Software Engineer position requiring TypeScript, React, Next.js, System Design, and Database Optimization"}"
 
-Detected skills: ${evaluation.detectedSkills.join(", ") || "none"}
-Missing high-value skills: ${evaluation.missingSkills.join(", ") || "none"}
+ATS Evaluation Metrics:
+Overall JD Match Score: ${evaluation.overallScore}/100
+Structure Score: ${evaluation.breakdown.structureScore}/100
+Keyword Match Score: ${evaluation.breakdown.keywordScore}/100
+Impact & Metrics Score: ${evaluation.breakdown.impactScore}/100
+Formatting Score: ${evaluation.breakdown.formattingScore}/100
 
-Issues found:
+Matched JD Skills Found in Resume: ${evaluation.detectedSkills.join(", ") || "none"}
+Critical Skills Missing from Resume Required by JD: ${evaluation.missingSkills.join(", ") || "none"}
+
+Deductions & Issues Identified:
 ${evaluation.deductions.map((d) => `- [${d.category}] ${d.issue} (Suggestion: ${d.recommendation})`).join("\n") || "None"}
 
-Metrics: ${evaluation.metrics.totalWords} words, ${evaluation.metrics.bulletCount} bullets, ${evaluation.metrics.actionVerbCount} strong action verbs, ${evaluation.metrics.quantifiableMetricsCount} bullets with quantified metrics.
+Resume Metrics: ${evaluation.metrics.totalWords} total words, ${evaluation.metrics.bulletCount} bullet points, ${evaluation.metrics.actionVerbCount} action verbs, ${evaluation.metrics.quantifiableMetricsCount} bullet points with quantified metrics.
 
 Return JSON matching this EXACT structure, no markdown, no triple backticks:
 {
-  "summary": "2-3 sentence plain-English overview grounded in the numbers above",
-  "strengths": ["3-4 specific strengths, each referencing something from the data above"],
-  "improvements": ["4-6 specific, actionable improvements, ordered by impact, each grounded in a deduction or gap above"]
+  "summary": "2-3 sentence overview explaining how well this resume matches the target Job Description",
+  "strengths": ["3-4 specific strengths directly aligned with the Job Description requirements"],
+  "improvements": ["4-6 specific, actionable improvements telling the candidate how to rewrite bullet points to match the missing skills and qualifications in the Job Description"]
 }
-
-Rules:
-- Do not invent a score or any number not already provided above.
-- Every point must trace back to the evaluation data, not generic resume advice.
 `;
 
   try {
@@ -66,7 +56,7 @@ Rules:
         {
           role: "system",
           content:
-            "You are a resume feedback writer. You never calculate scores yourself — you only explain a score you're given. Always output valid JSON.",
+            "You are a Senior Technical Recruiter. You provide precise feedback comparing a resume against a target Job Description. Always output valid JSON.",
         },
         { role: "user", content: prompt },
       ],
@@ -84,9 +74,9 @@ Rules:
     console.error("Groq Resume Feedback Error:", error);
     return {
       summary:
-        "Your ATS score and category breakdown were calculated successfully. AI-generated narrative feedback couldn't be produced this time — please retry.",
+        "Your ATS score and Job Description skill alignment were calculated successfully. Detailed AI narrative feedback could not be produced this time — please retry.",
       strengths: [],
-      improvements: ["Re-run the analysis to get detailed AI feedback."],
+      improvements: ["Re-run the analysis to get detailed AI Job Description feedback."],
     };
   }
 }
@@ -149,7 +139,6 @@ export async function generateJobs(skills: string[]) {
   }
 }
 
-// Inside frontend/src/lib/groq.ts
 export async function generateInterview(role: string) {
   try {
     const response = await groq.chat.completions.create({
@@ -177,10 +166,6 @@ Return JSON matching this exact structure:
     return "How do you handle client-side vs server-side rendering trade-offs in Next.js?";
   }
 }
-
-// Inside frontend/src/lib/groq.ts
-
-// frontend/src/lib/groq.ts
 
 export async function evaluateInterview(question: string, answer: string) {
   try {

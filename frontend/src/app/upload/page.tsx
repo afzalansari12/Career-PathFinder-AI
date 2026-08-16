@@ -5,18 +5,8 @@ import React, { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, UploadCloud, X, Loader2, CheckCircle2, BrainCircuit, Sparkles, Target, Zap } from "lucide-react";
+import { FileText, UploadCloud, X, Loader2, CheckCircle2, BrainCircuit, Sparkles, FileCode, Zap } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
-import { Button } from "@/components/ui/button";
-
-const TARGET_ROLES = [
-  "Software Engineer",
-  "Full Stack Engineer",
-  "Frontend Engineer",
-  "Backend Engineer",
-  "Senior Full Stack Engineer",
-  "AI / ML Engineer",
-];
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -26,7 +16,9 @@ function formatBytes(bytes: number) {
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [targetRole, setTargetRole] = useState(TARGET_ROLES[0]);
+  const [jobDescription, setJobDescription] = useState(
+    "Full Stack Software Engineer position requiring TypeScript, React, Next.js, System Design, PostgreSQL performance tuning, and Docker containerization."
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
@@ -60,7 +52,7 @@ export default function UploadPage() {
 
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("targetRole", targetRole);
+      formData.append("jobDescription", jobDescription);
 
       const res = await fetch("/api/upload", { method: "POST", body: formData });
 
@@ -92,43 +84,40 @@ export default function UploadPage() {
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs sm:text-sm font-mono font-semibold">
-                <BrainCircuit className="w-4 h-4 text-emerald-400 animate-pulse" /> AI Deterministic ATS Resume Audit Engine
+                <BrainCircuit className="w-4 h-4 text-emerald-400 animate-pulse" /> Job Description ATS Alignment Engine
               </div>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-extrabold tracking-tight text-foreground">
-                Upload & Audit Resume
+                ATS Resume & Job Match Audit
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground max-w-2xl leading-relaxed">
-                Upload your PDF resume to generate an instant deterministic ATS match score, key skill highlights, and recruiter improvement tips tailored to your target position.
+                Paste the target Job Description and upload your resume to calculate your exact ATS match score, missing skills, and tailoring recommendations for that job opening.
               </p>
             </div>
 
             <div className="flex items-center gap-3 bg-card/80 p-4 rounded-2xl border border-border/80 text-xs font-mono text-emerald-400 shadow-md">
-              <Zap className="w-4 h-4" /> Real ATS Parser Ready
+              <Zap className="w-4 h-4" /> JD Keyword Evaluator Active
             </div>
           </div>
         </div>
 
-        {/* Target Role Selector Pills */}
-        <div className="space-y-3">
-          <label className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <Target className="w-4 h-4 text-emerald-400" /> Target Position for ATS Audit
+        {/* Target Job Description Textarea Section */}
+        <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-3">
+          <label className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-foreground">
+              <FileCode className="w-4 h-4 text-emerald-400" /> Target Job Description (JD)
+            </span>
+            <span className="text-[11px] text-muted-foreground font-normal">
+              Paste the full job requirements, qualifications, and responsibilities
+            </span>
           </label>
-          <div className="flex border-b border-border/80 gap-2 overflow-x-auto pb-2">
-            {TARGET_ROLES.map((role) => (
-              <button
-                key={role}
-                type="button"
-                onClick={() => setTargetRole(role)}
-                className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition duration-300 cursor-pointer shrink-0 ${
-                  targetRole === role
-                    ? "bg-gradient-to-r from-emerald-600/20 to-teal-500/20 text-emerald-400 border border-emerald-500/40 shadow-lg shadow-emerald-950/20"
-                    : "text-muted-foreground hover:bg-card hover:text-foreground border border-transparent"
-                }`}
-              >
-                {role}
-              </button>
-            ))}
-          </div>
+
+          <textarea
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
+            rows={5}
+            placeholder="Paste target Job Description here (e.g. Senior Full Stack Engineer role requiring Next.js, TypeScript, PostgreSQL, Docker)..."
+            className="w-full bg-background border border-border/80 rounded-2xl p-4 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition leading-relaxed font-mono"
+          />
         </div>
 
         {/* Dropzone Container */}
@@ -186,12 +175,12 @@ export default function UploadPage() {
               <div className="pt-2">
                 <button
                   onClick={handleUpload}
-                  disabled={loading || succeeded}
+                  disabled={loading || succeeded || !jobDescription.trim()}
                   className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/30 cursor-pointer"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Running ATS Audit...
+                      <Loader2 className="w-4 h-4 animate-spin" /> Evaluating Resume Against Job Description...
                     </>
                   ) : succeeded ? (
                     <>
@@ -199,7 +188,7 @@ export default function UploadPage() {
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4" /> Start Real ATS Audit for {targetRole}
+                      <Sparkles className="w-4 h-4" /> Calculate ATS Score for Target Job Description
                     </>
                   )}
                 </button>

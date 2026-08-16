@@ -18,7 +18,10 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = (formData.get("file") as File) || (formData.get("resume") as File);
-    const targetRole = (formData.get("targetRole") as string) || "Software Engineer";
+    const jobDescription =
+      (formData.get("jobDescription") as string) ||
+      (formData.get("targetRole") as string) ||
+      "Full Stack Software Engineer position requiring TypeScript, React, Next.js, System Design, and Database Optimization.";
 
     if (!file) {
       return NextResponse.json({ error: "No resume file uploaded" }, { status: 400 });
@@ -48,17 +51,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Deterministic ATS Scoring
-    const evaluation = DeterministicATSEngine.evaluate(resumeText, targetRole);
+    // 1. Deterministic ATS Scoring against exact Job Description
+    const evaluation = DeterministicATSEngine.evaluate(resumeText, jobDescription);
 
-    // 2. AI Executive Feedback & Actionable Recommendations
-    const aiFeedback = await generateResumeFeedback(evaluation, targetRole);
+    // 2. AI Recruiter Feedback tailored to the Job Description
+    const aiFeedback = await generateResumeFeedback(evaluation, jobDescription);
 
     const interviewReadiness = Math.min(95, Math.max(40, Math.round(evaluation.overallScore * 0.92)));
     const matchedRolesCount = Math.max(6, evaluation.detectedSkills.length * 3 + 4);
 
     const fullResult = {
-      targetRole,
+      jobDescription,
+      targetRole: "Matched Job Description",
       overallScore: evaluation.overallScore,
       scoreDiff: "+6%",
       interviewReadiness,
@@ -66,6 +70,7 @@ export async function POST(req: NextRequest) {
       breakdown: evaluation.breakdown,
       detectedSkills: evaluation.detectedSkills,
       missingSkills: evaluation.missingSkills,
+      jobDescriptionSkills: evaluation.jobDescriptionSkills,
       deductions: evaluation.deductions,
       metrics: evaluation.metrics,
       summary: aiFeedback.summary,
@@ -80,7 +85,7 @@ export async function POST(req: NextRequest) {
         await supabase.from("profiles").upsert(
           {
             clerk_id: userId,
-            target_role: targetRole,
+            target_role: "Matched Job Description",
             ats_score: evaluation.overallScore,
             score_diff: "+6%",
             interview_readiness: interviewReadiness,

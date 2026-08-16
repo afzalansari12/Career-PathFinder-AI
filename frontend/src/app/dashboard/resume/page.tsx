@@ -24,18 +24,8 @@ import {
   Check,
   BrainCircuit,
   Zap,
+  FileCode,
 } from "lucide-react";
-import Link from "next/link";
-
-const TARGET_ROLES = [
-  "Software Engineer",
-  "Full Stack Engineer",
-  "Frontend Developer",
-  "Backend Developer",
-  "AI / ML Engineer",
-  "DevOps Engineer",
-  "Data Scientist",
-];
 
 const FREE_AUDIT_LIMIT = 3;
 
@@ -43,7 +33,9 @@ export default function ResumePage() {
   const { user } = useUser();
   const [mounted, setMounted] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [targetRole, setTargetRole] = useState(TARGET_ROLES[0]);
+  const [jobDescription, setJobDescription] = useState(
+    "Full Stack Software Engineer position requiring TypeScript, React, Next.js, System Design, PostgreSQL performance tuning, and Docker containerization."
+  );
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<any>(null);
@@ -74,7 +66,7 @@ export default function ResumePage() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return;
+    if (!file || !jobDescription.trim()) return;
 
     if (!isPro && auditCount >= FREE_AUDIT_LIMIT) {
       setIsUpgradeOpen(true);
@@ -86,7 +78,7 @@ export default function ResumePage() {
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("targetRole", targetRole);
+    formData.append("jobDescription", jobDescription);
 
     try {
       const res = await fetch("/api/ats/evaluate", {
@@ -128,18 +120,6 @@ export default function ResumePage() {
     }, 1200);
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-emerald-500 border-emerald-500/30 bg-emerald-500/10";
-    if (score >= 60) return "text-amber-500 border-amber-500/30 bg-amber-500/10";
-    return "text-rose-500 border-rose-500/30 bg-rose-500/10";
-  };
-
-  const getProgressColor = (score: number) => {
-    if (score >= 80) return "bg-emerald-500";
-    if (score >= 60) return "bg-amber-500";
-    return "bg-rose-500";
-  };
-
   const isLimitReached = !isPro && auditCount >= FREE_AUDIT_LIMIT;
 
   return (
@@ -155,10 +135,10 @@ export default function ResumePage() {
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs sm:text-sm font-mono font-semibold">
-                <BrainCircuit className="w-4 h-4 text-emerald-400 animate-pulse" /> Deterministic & AI ATS Engine
+                <BrainCircuit className="w-4 h-4 text-emerald-400 animate-pulse" /> Job Description ATS Match Engine
               </div>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-extrabold tracking-tight text-foreground flex items-center gap-3">
-                ATS Resume Optimization
+                ATS Resume & Job Match Audit
                 {!isPro ? (
                   <span className="text-xs font-mono font-normal bg-secondary text-muted-foreground border border-border px-3 py-1 rounded-full">
                     FREE AUDIT
@@ -170,7 +150,7 @@ export default function ResumePage() {
                 )}
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground max-w-2xl leading-relaxed">
-                Run deterministic parsing and AI scoring on your resume against your target role requirements.
+                Paste the specific Job Description for your target application, upload your resume, and calculate your exact ATS match score with recruiter feedback.
               </p>
             </div>
 
@@ -206,34 +186,30 @@ export default function ResumePage() {
 
         {/* Upload Form */}
         <form onSubmit={handleUpload} className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-6">
+          {/* Job Description Textarea */}
           <div className="space-y-3">
-            <label className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Target className="w-4 h-4 text-emerald-400" /> Target Role Selection
+            <label className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-foreground">
+                <FileCode className="w-4 h-4 text-emerald-400" /> Target Job Description (JD)
+              </span>
+              <span className="text-[11px] text-muted-foreground font-normal">
+                Paste job requirements, qualifications, and tech stack
+              </span>
             </label>
-            <div className="flex border-b border-border/80 gap-2 overflow-x-auto pb-2">
-              {TARGET_ROLES.map((r) => {
-                const isActive = targetRole === r;
-                return (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setTargetRole(r)}
-                    className={`px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition duration-300 cursor-pointer shrink-0 ${
-                      isActive
-                        ? "bg-gradient-to-r from-emerald-600/20 to-teal-500/20 text-emerald-400 border border-emerald-500/40 shadow-lg shadow-emerald-950/20"
-                        : "text-muted-foreground hover:bg-card hover:text-foreground border border-transparent"
-                    }`}
-                  >
-                    {r}
-                  </button>
-                );
-              })}
-            </div>
+
+            <textarea
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              rows={5}
+              placeholder="Paste target Job Description here (e.g. Senior Full Stack Engineer role requiring Next.js, TypeScript, PostgreSQL, Docker)..."
+              className="w-full bg-background border border-border/80 rounded-2xl p-4 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition leading-relaxed font-mono"
+            />
           </div>
 
+          {/* PDF Resume Upload */}
           <div className="space-y-2">
             <label className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <FileText className="w-4 h-4 text-blue-400" /> Upload Resume File (PDF)
+              <FileText className="w-4 h-4 text-blue-400" /> Upload Candidate Resume File (PDF)
             </label>
             <input
               type="file"
@@ -247,12 +223,12 @@ export default function ResumePage() {
 
           <button
             type="submit"
-            disabled={uploading || !file || isLimitReached}
+            disabled={uploading || !file || !jobDescription.trim() || isLimitReached}
             className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:opacity-50 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/30 cursor-pointer"
           >
             {uploading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Evaluating Resume...
+                <Loader2 className="w-4 h-4 animate-spin" /> Evaluating Resume Against Job Description...
               </>
             ) : isLimitReached ? (
               <>
@@ -260,7 +236,7 @@ export default function ResumePage() {
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4" /> Run Deterministic ATS Evaluation
+                <Sparkles className="w-4 h-4" /> Calculate ATS Score for Target Job Description
               </>
             )}
           </button>
@@ -272,16 +248,16 @@ export default function ResumePage() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-border pb-6">
               <div>
                 <span className="text-xs font-mono font-bold uppercase text-emerald-400 tracking-wider">
-                  ATS Audit Result
+                  Target Job Description Alignment Result
                 </span>
                 <h2 className="text-2xl font-heading font-extrabold text-foreground mt-1">
-                  Matched for {targetRole}
+                  Job Match Score
                 </h2>
               </div>
 
               <div className="flex items-center gap-4">
                 <div className="text-4xl font-extrabold font-mono text-emerald-400">
-                  {analysis.overall_score || 84} / 100
+                  {analysis.overallScore || 84} / 100
                 </div>
 
                 <button
@@ -293,14 +269,25 @@ export default function ResumePage() {
               </div>
             </div>
 
+            {/* AI Recruiter Summary */}
+            {analysis.summary && (
+              <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 text-xs sm:text-sm text-foreground/90 flex items-start gap-3">
+                <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <span className="font-bold text-emerald-400 block mb-0.5">Recruiter Alignment Strategy:</span>
+                  {analysis.summary}
+                </div>
+              </div>
+            )}
+
             {/* Detected & Missing Skills */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <h3 className="text-xs font-mono uppercase font-bold text-emerald-400 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" /> Detected Core Skills ({analysis.detected_skills?.length || 7})
+                  <CheckCircle2 className="w-4 h-4" /> Matched Job Description Skills ({analysis.detectedSkills?.length || 5})
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
-                  {(analysis.detected_skills || ["React", "TypeScript", "Next.js", "Node.js", "REST APIs"]).map(
+                  {(analysis.detectedSkills || ["React", "TypeScript", "Next.js", "Node.js"]).map(
                     (sk: string, i: number) => (
                       <span key={i} className="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium">
                         {sk}
@@ -312,10 +299,10 @@ export default function ResumePage() {
 
               <div className="space-y-3">
                 <h3 className="text-xs font-mono uppercase font-bold text-amber-400 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" /> Missing Key Skills ({analysis.missing_skills?.length || 3})
+                  <AlertTriangle className="w-4 h-4" /> Missing Key JD Requirements ({analysis.missingSkills?.length || 2})
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
-                  {(analysis.missing_skills || ["Docker", "GraphQL", "Redis"]).map((sk: string, i: number) => (
+                  {(analysis.missingSkills || ["Docker", "Redis"]).map((sk: string, i: number) => (
                     <span key={i} className="px-3 py-1 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-medium">
                       {sk}
                     </span>
@@ -323,6 +310,23 @@ export default function ResumePage() {
                 </div>
               </div>
             </div>
+
+            {/* Actionable Tailoring Recommendations */}
+            {analysis.improvements && analysis.improvements.length > 0 && (
+              <div className="space-y-3 pt-2">
+                <h3 className="text-xs font-mono uppercase font-bold text-foreground">
+                  Actionable Resume Bullet Tailoring Recommendations
+                </h3>
+                <div className="space-y-2 text-xs sm:text-sm">
+                  {analysis.improvements.map((imp: string, idx: number) => (
+                    <div key={idx} className="p-3 rounded-xl bg-secondary/40 border border-border/60 text-foreground flex items-start gap-2">
+                      <span className="text-emerald-400 font-bold font-mono">#{idx + 1}</span>
+                      <span>{imp}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -21,7 +21,10 @@ export async function POST(req: Request) {
 
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    const targetRole = (formData.get("targetRole") as string) || "Software Engineer";
+    const jobDescription =
+      (formData.get("jobDescription") as string) ||
+      (formData.get("targetRole") as string) ||
+      "Full Stack Software Engineer position requiring TypeScript, React, Next.js, System Design, and Database Optimization.";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -40,15 +43,15 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Deterministic ATS scoring (no AI) — this is the score of record.
-    const evaluation = DeterministicATSEngine.evaluate(resumeText, targetRole);
+    // 2. Deterministic ATS scoring against exact Job Description
+    const evaluation = DeterministicATSEngine.evaluate(resumeText, jobDescription);
 
-    // 3. Groq only narrates the finished result — it cannot change the score.
-    const feedback = await generateResumeFeedback(evaluation, targetRole);
+    // 3. Groq narrates result tailored to the Job Description
+    const feedback = await generateResumeFeedback(evaluation, jobDescription);
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // 4. Upload the original PDF to Supabase Storage
+    // 4. Upload original PDF to Supabase Storage
     const fileName = `${userId}/${Date.now()}-${file.name}`;
     const { error: storageError } = await supabaseAdmin.storage
       .from("resumes")
@@ -58,13 +61,13 @@ export async function POST(req: Request) {
       console.error("Storage error:", storageError);
     }
 
-    // 5. Persist the full analysis
+    // 5. Persist full analysis
     const { data: saved, error: dbError } = await supabaseAdmin
       .from("ats_evaluations")
       .insert({
         user_id: userId,
         resume_url: storageError ? null : fileName,
-        target_role: targetRole,
+        target_role: "Matched Job Description",
         overall_score: evaluation.overallScore,
         breakdown: evaluation.breakdown,
         deductions: evaluation.deductions,
