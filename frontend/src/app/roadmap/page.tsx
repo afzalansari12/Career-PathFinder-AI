@@ -22,6 +22,11 @@ import {
   Bot,
   Send,
   AlertTriangle,
+  ArrowRight,
+  BrainCircuit,
+  GraduationCap,
+  Flame,
+  Check,
 } from "lucide-react";
 import {
   LearnerProfile,
@@ -236,78 +241,172 @@ export default function LearningPathPage() {
     [completedPhases, totalPhases, mounted]
   );
 
+  const skillGapsCount = useMemo(() => calculateSkillGaps(profile).length, [profile]);
+
   return (
     <AppShell>
-      <div className="max-w-7xl mx-auto space-y-6 p-2 sm:p-4">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono mb-2">
-              <Zap className="w-3.5 h-3.5" /> AI Personalized Learning Path Recommender
-            </div>
-            <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground">
-              Learning Path & Recommendations
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              Describe your target career goals to generate custom roadmap milestones, course recommendations, and AI gap analyses.
-            </p>
+      <div className="max-w-7xl mx-auto space-y-8 p-3 sm:p-6">
+        {/* Decorative Hero Mesh Glow Banner matching Dashboard */}
+        <div className="relative z-30 rounded-3xl bg-gradient-to-br from-card via-card/95 to-emerald-950/30 border border-emerald-500/30 p-6 sm:p-8 md:p-10 shadow-2xl backdrop-blur-xl">
+          <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+            <div className="absolute -top-28 -right-28 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl" />
+            <div className="absolute -bottom-28 -left-28 w-80 h-80 bg-blue-500/15 rounded-full blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
           </div>
 
-          {/* Quick Stats Pill */}
-          <div className="flex items-center gap-4 bg-card border border-border/80 px-5 py-3 rounded-2xl shadow-xl">
-            <div className="flex items-center gap-3">
-              <Trophy className="w-5 h-5 text-emerald-400" />
-              <div>
-                <div className="text-[10px] text-muted-foreground font-mono uppercase">Path Mastery</div>
-                <div className="text-base font-bold text-foreground" suppressHydrationWarning>
-                  {mounted ? `${progressPercent}% Completed` : "0% Completed"}
+          <div className="relative z-10 space-y-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-3">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs sm:text-sm font-mono font-semibold">
+                  <BrainCircuit className="w-4 h-4 text-emerald-400 animate-pulse" /> AI Personalized Learning Path Engine v2.0
                 </div>
+                {/* Prominent Large Heading */}
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-extrabold tracking-tight text-foreground leading-tight">
+                  Learning Path & Recommendations
+                </h1>
+                <p className="text-sm sm:text-base text-muted-foreground max-w-3xl leading-relaxed">
+                  Interactive multi-phase milestone roadmaps, real course recommendations, portfolio projects, and AI skill gap matrices tailored specifically to your career goals.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => setIsAdaptModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-card border border-border hover:border-emerald-500/50 text-foreground text-xs sm:text-sm font-bold shadow-lg transition-all duration-300 cursor-pointer"
+                >
+                  <Sliders className="w-4 h-4 text-emerald-400" /> Adapt Roadmap
+                </button>
               </div>
             </div>
-            <div className="h-8 w-px bg-border" />
-            <div>
-              <div className="text-[10px] text-muted-foreground font-mono uppercase">Target Goal</div>
-              <div className="text-xs font-bold text-emerald-400 truncate max-w-[130px]" suppressHydrationWarning>
-                {mounted ? profile.targetGoal : "Software Engineer"}
+
+            {/* Natural Language Goal Input Bar inside Hero */}
+            <div className="bg-card/90 border border-border/80 rounded-2xl p-4 sm:p-5 shadow-xl backdrop-blur-md space-y-3">
+              <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-foreground">
+                  <Sparkles className="w-4 h-4 text-emerald-400" /> Target Position & Career Goal Input
+                </span>
+                <span className="text-[11px] text-muted-foreground font-normal hidden sm:inline">
+                  e.g. "Software Engineer", "Frontend Developer", "Data Scientist", or "AI Engineer"
+                </span>
+              </label>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  value={promptInput}
+                  onChange={(e) => setPromptInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleNaturalLanguageConverse()}
+                  placeholder="Type your target role (e.g. Software Engineer, AI Engineer) to generate dynamic paths..."
+                  className="flex-1 bg-background border border-border/80 rounded-xl px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition"
+                />
+
+                <button
+                  onClick={() => handleNaturalLanguageConverse()}
+                  disabled={generating || !promptInput.trim()}
+                  className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:opacity-50 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-lg shadow-emerald-950/30 transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                >
+                  {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Compass className="w-4 h-4" />}
+                  {generating ? "Generating AI Path..." : "Generate AI Path"}
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Natural Language Goal Description Bar */}
-        <div className="bg-card border border-border/80 rounded-3xl p-5 shadow-xl space-y-3">
-          <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-foreground">
-              <Sparkles className="w-4 h-4 text-emerald-400" /> Target Goal Description
-            </span>
-            <span className="text-[11px] text-muted-foreground font-normal">
-              e.g. "Software Engineer", "Frontend Engineer", "Data Scientist", or "AI Engineer"
-            </span>
-          </label>
+        {/* 4 Interactive Decorative Dashboard Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* Card 1: Path Mastery */}
+          <div className="relative overflow-hidden rounded-3xl bg-card/90 border border-border/80 hover:border-emerald-500/50 p-5 shadow-xl space-y-3 backdrop-blur-md group transition-all duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all" />
+            <div className="flex justify-between items-center text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+              <span>Path Mastery</span>
+              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <Trophy className="w-4 h-4" />
+              </div>
+            </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              value={promptInput}
-              onChange={(e) => setPromptInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleNaturalLanguageConverse()}
-              placeholder="Describe your target role, timeline, or focus area..."
-              className="flex-1 bg-background border border-border rounded-2xl px-4 py-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            />
+            <div className="text-3xl font-extrabold text-foreground font-mono tracking-tight flex items-baseline gap-2" suppressHydrationWarning>
+              <span>{mounted ? `${progressPercent}%` : "0%"}</span>
+              <span className="text-xs text-muted-foreground font-normal">Completed</span>
+            </div>
+
+            <div className="space-y-1">
+              <div className="w-full h-2 rounded-full bg-secondary overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <div className="text-[10px] font-mono text-muted-foreground flex justify-between">
+                <span>{completedPhases} of {totalPhases} Phases</span>
+                <span className="text-emerald-400 font-bold">{learningPath?.matchScore || 95}% Match</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Target Career Goal */}
+          <div className="relative overflow-hidden rounded-3xl bg-card/90 border border-border/80 hover:border-blue-500/50 p-5 shadow-xl space-y-3 backdrop-blur-md group transition-all duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all" />
+            <div className="flex justify-between items-center text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+              <span>Target Role</span>
+              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <Target className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="text-lg font-bold text-blue-400 truncate" suppressHydrationWarning>
+              {mounted ? profile.targetGoal : "Software Engineer"}
+            </div>
+
+            <div className="text-xs text-muted-foreground font-mono">
+              Level: <b className="text-foreground">{profile.experienceLevel}</b>
+            </div>
+          </div>
+
+          {/* Card 3: Study Commitment */}
+          <div className="relative overflow-hidden rounded-3xl bg-card/90 border border-border/80 hover:border-purple-500/50 p-5 shadow-xl space-y-3 backdrop-blur-md group transition-all duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition-all" />
+            <div className="flex justify-between items-center text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+              <span>Weekly Pace</span>
+              <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                <Clock className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="text-3xl font-extrabold text-purple-400 font-mono tracking-tight">
+              {profile.preferences.hoursPerWeek} <span className="text-xs font-normal text-muted-foreground">hrs/week</span>
+            </div>
+
+            <div className="text-xs text-muted-foreground font-mono">
+              Style: <b className="text-foreground">{profile.preferences.style}</b>
+            </div>
+          </div>
+
+          {/* Card 4: Identified Skill Gaps */}
+          <div className="relative overflow-hidden rounded-3xl bg-card/90 border border-border/80 hover:border-amber-500/50 p-5 shadow-xl space-y-3 backdrop-blur-md group transition-all duration-300">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all" />
+            <div className="flex justify-between items-center text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+              <span>Identified Gaps</span>
+              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="text-3xl font-extrabold text-amber-400 font-mono tracking-tight">
+              {skillGapsCount} <span className="text-xs font-normal text-muted-foreground">Skills</span>
+            </div>
 
             <button
-              onClick={() => handleNaturalLanguageConverse()}
-              disabled={generating || !promptInput.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-6 py-3 rounded-2xl shadow-lg shadow-emerald-950/20 transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              onClick={() => setActiveTab("skillgaps")}
+              className="text-xs text-amber-400 font-bold flex items-center gap-1 hover:underline cursor-pointer"
             >
-              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Compass className="w-4 h-4" />}
-              {generating ? "AI Thinking..." : "Generate AI Path"}
+              View Radar Matrix <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-border/80 gap-2 overflow-x-auto pb-1">
+        {/* Decorative Interactive Navigation Tabs */}
+        <div className="flex border-b border-border/80 gap-3 overflow-x-auto pb-2">
           {[
             { id: "path", label: "Structured Roadmap", icon: Layers },
             { id: "recommendations", label: "AI Recommended Resources", icon: BookOpen, badge: `${courses.length + projects.length}` },
@@ -320,10 +419,10 @@ export default function LearningPathPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+                className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer shrink-0 ${
                   isActive
-                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-md"
-                    : "text-muted-foreground hover:bg-card hover:text-foreground"
+                    ? "bg-gradient-to-r from-emerald-600/20 to-teal-500/20 text-emerald-400 border border-emerald-500/40 shadow-lg shadow-emerald-950/20"
+                    : "text-muted-foreground hover:bg-card hover:text-foreground border border-transparent"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -345,8 +444,8 @@ export default function LearningPathPage() {
         {activeTab === "path" && (
           <div className="space-y-6">
             {/* Top Toolbar */}
-            <div className="flex items-center justify-between bg-card/60 p-4 rounded-2xl border border-border/70">
-              <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center justify-between bg-card/80 p-4 rounded-2xl border border-border/80 shadow-md">
+              <div className="flex items-center gap-3 text-xs sm:text-sm">
                 <span className="font-mono text-muted-foreground">Pace: <b className="text-foreground">{learningPath?.learningPace || profile.preferences.pace}</b></span>
                 <span className="h-3 w-px bg-border" />
                 <span className="font-mono text-muted-foreground">Commitment: <b className="text-foreground">{profile.preferences.hoursPerWeek} hrs/week</b></span>
@@ -356,7 +455,7 @@ export default function LearningPathPage() {
 
               <button
                 onClick={() => setIsAdaptModalOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-secondary hover:bg-accent text-foreground text-xs font-semibold flex items-center gap-1.5 border border-border transition cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-secondary hover:bg-accent text-foreground text-xs font-semibold flex items-center gap-1.5 border border-border transition cursor-pointer"
               >
                 <Sliders className="w-3.5 h-3.5 text-emerald-400" /> Adapt Path with AI
               </button>
@@ -364,10 +463,10 @@ export default function LearningPathPage() {
 
             {/* AI Summary Banner */}
             {learningPath?.aiSummary && (
-              <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/20 text-xs text-foreground/90 flex items-start gap-3">
-                <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 text-xs sm:text-sm text-foreground/90 flex items-start gap-3 shadow-lg">
+                <Sparkles className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5 animate-pulse" />
                 <div className="leading-relaxed">
-                  <span className="font-bold text-emerald-400 block mb-0.5">AI Path Rationale:</span>
+                  <span className="font-bold text-emerald-400 block mb-0.5">AI Path Strategy:</span>
                   {learningPath.aiSummary}
                 </div>
               </div>
@@ -387,10 +486,10 @@ export default function LearningPathPage() {
                       <div
                         key={p.step}
                         onClick={() => setActiveStep(p.step)}
-                        className={`relative pl-14 pr-5 py-5 rounded-2xl border transition-all cursor-pointer ${
+                        className={`relative pl-14 pr-5 py-5 rounded-2xl border transition-all duration-300 cursor-pointer ${
                           isActive
-                            ? "bg-card border-emerald-500/50 shadow-xl ring-1 ring-emerald-500/30"
-                            : "bg-card/60 border-border/70 hover:border-border hover:bg-card"
+                            ? "bg-card border-emerald-500/60 shadow-xl ring-1 ring-emerald-500/40"
+                            : "bg-card/70 border-border/70 hover:border-border hover:bg-card"
                         }`}
                       >
                         <div
@@ -400,7 +499,7 @@ export default function LearningPathPage() {
                           }}
                           className={`absolute left-3 top-5 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-transform hover:scale-110 cursor-pointer ${
                             isDone
-                              ? "bg-emerald-500 text-white shadow-md"
+                              ? "bg-emerald-500 text-white shadow-md shadow-emerald-950/40"
                               : isInProgress
                               ? "bg-amber-500 text-white shadow-md"
                               : "bg-secondary text-muted-foreground border border-border"
@@ -419,7 +518,7 @@ export default function LearningPathPage() {
                                 <Clock className="w-3 h-3" /> {p.duration}
                               </span>
                             </div>
-                            <h3 className="text-base font-heading font-bold text-foreground">{p.title}</h3>
+                            <h3 className="text-base sm:text-lg font-heading font-bold text-foreground">{p.title}</h3>
                             <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{p.description}</p>
                           </div>
                           <ChevronRight
@@ -450,7 +549,7 @@ export default function LearningPathPage() {
                           </div>
                           <button
                             onClick={() => togglePhaseStatus(current.step)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                               current.status === "completed"
                                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                                 : "bg-secondary text-foreground border border-border hover:bg-accent"
@@ -513,7 +612,7 @@ export default function LearningPathPage() {
                           <div className="pt-2">
                             <button
                               onClick={() => setQuizModalPhase(current)}
-                              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-950/30"
                             >
                               <Award className="w-4 h-4" /> Take Milestone Assessment Quiz
                             </button>
@@ -543,7 +642,7 @@ export default function LearningPathPage() {
                 {courses.map((course) => (
                   <div
                     key={course.id}
-                    className="bg-card border border-border/80 rounded-2xl p-5 shadow-lg space-y-4 flex flex-col justify-between hover:border-emerald-500/40 transition"
+                    className="bg-card border border-border/80 rounded-2xl p-5 shadow-lg space-y-4 flex flex-col justify-between hover:border-emerald-500/40 transition duration-300"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -593,7 +692,7 @@ export default function LearningPathPage() {
                 {projects.map((proj) => (
                   <div
                     key={proj.id}
-                    className="bg-card border border-border/80 rounded-2xl p-5 shadow-lg space-y-4 flex flex-col justify-between hover:border-blue-500/40 transition"
+                    className="bg-card border border-border/80 rounded-2xl p-5 shadow-lg space-y-4 flex flex-col justify-between hover:border-blue-500/40 transition duration-300"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -688,7 +787,7 @@ export default function LearningPathPage() {
                   )}
 
                   <div
-                    className={`p-4 rounded-2xl max-w-[80%] text-xs leading-relaxed ${
+                    className={`p-4 rounded-2xl max-w-[80%] text-xs sm:text-sm leading-relaxed ${
                       msg.role === "user"
                         ? "bg-emerald-600 text-white font-medium rounded-br-none"
                         : "bg-muted/40 border border-border/60 text-foreground rounded-bl-none whitespace-pre-wrap"
@@ -714,7 +813,7 @@ export default function LearningPathPage() {
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSendAssistantChat()}
                 placeholder="Ask anything about your roadmap, prerequisites, or learning strategy..."
-                className="flex-1 bg-background border border-border rounded-xl px-4 py-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="flex-1 bg-background border border-border rounded-xl px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
               <button
                 onClick={handleSendAssistantChat}

@@ -22,37 +22,48 @@ import {
   Layers,
   Clock,
   Zap,
+  Target,
+  Plus,
+  Trash2,
+  BarChart3,
+  BrainCircuit,
 } from "lucide-react";
 import { LearnerProfile, ExperienceLevel, LearningPace, LearningStyle, CompletedCourse } from "@/types/learningPath";
-import { loadStoredProfile, saveStoredProfile, calculateSkillGaps } from "@/lib/learningPathEngine";
+import { DEFAULT_PROFILE, loadStoredProfile, saveStoredProfile, calculateSkillGaps } from "@/lib/learningPathEngine";
 
 export default function ProfilePage() {
   const { user } = useUser();
+  const [mounted, setMounted] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
   const userId = user?.id || user?.primaryEmailAddress?.emailAddress;
 
-  const checkPro = () => {
-    setIsPro(getProStatus(userId));
-  };
-
   useEffect(() => {
-    checkPro();
-    window.addEventListener("pro_status_updated", checkPro);
-    return () => window.removeEventListener("pro_status_updated", checkPro);
+    setMounted(true);
+    if (userId) {
+      setIsPro(getProStatus(userId));
+    }
   }, [userId]);
 
-  // Learner Profile State
-  const [profile, setProfile] = useState<LearnerProfile>(loadStoredProfile());
+  // Learner Profile State initialized with baseline defaults for zero hydration mismatch
+  const [profile, setProfile] = useState<LearnerProfile>(DEFAULT_PROFILE);
 
   // Additional basic profile fields
-  const [fullName, setFullName] = useState(user?.fullName || "Afzal Ansari");
-  const [email] = useState(user?.primaryEmailAddress?.emailAddress || "afzalansari12ab@gmail.com");
+  const [fullName, setFullName] = useState("Learner");
+  const [email, setEmail] = useState("learner@example.com");
   const [location, setLocation] = useState("Delhi, India");
 
-  // New course state
+  // Load client stored profile after mount
+  useEffect(() => {
+    const p = loadStoredProfile();
+    setProfile(p);
+    if (user?.fullName) setFullName(user.fullName);
+    if (user?.primaryEmailAddress?.emailAddress) setEmail(user.primaryEmailAddress.emailAddress);
+  }, [user]);
+
+  // New course input state
   const [newCourseTitle, setNewCourseTitle] = useState("");
   const [newCoursePlatform, setNewCoursePlatform] = useState("Udemy");
 
@@ -77,212 +88,309 @@ export default function ProfilePage() {
       platform: newCoursePlatform,
       dateCompleted: new Date().toISOString().split("T")[0],
       rating: 5,
-      keySkillsLearned: ["Software Architecture", "Core Concepts"],
+      keySkillsLearned: ["Software Architecture", "Core Competencies"],
     };
     const updated: LearnerProfile = {
       ...profile,
-      completedCourses: [course, ...profile.completedCourses],
+      completedCourses: [course, ...(profile.completedCourses || [])],
     };
     setProfile(updated);
     saveStoredProfile(updated);
     setNewCourseTitle("");
   };
 
+  const handleRemoveCourse = (id: string) => {
+    const updated: LearnerProfile = {
+      ...profile,
+      completedCourses: (profile.completedCourses || []).filter((c) => c.id !== id),
+    };
+    setProfile(updated);
+    saveStoredProfile(updated);
+  };
+
+  const updateSkillLevel = (skillName: string, newLevel: number, isKnown: boolean) => {
+    if (isKnown) {
+      const updatedKnown = (profile.knownSkills || []).map((s) =>
+        s.name.toLowerCase() === skillName.toLowerCase() ? { ...s, level: newLevel } : s
+      );
+      const updated = { ...profile, knownSkills: updatedKnown };
+      setProfile(updated);
+      saveStoredProfile(updated);
+    } else {
+      const updatedTarget = (profile.targetSkills || []).map((s) =>
+        s.name.toLowerCase() === skillName.toLowerCase() ? { ...s, level: newLevel } : s
+      );
+      const updated = { ...profile, targetSkills: updatedTarget };
+      setProfile(updated);
+      saveStoredProfile(updated);
+    }
+  };
+
   return (
     <AppShell>
-      {/* Top Controls Bar */}
-      <div className="-mt-6 -mx-6 lg:-mt-10 lg:-mx-10 border-b border-border bg-card px-6 py-3 mb-6 flex items-center justify-between shadow-2xs">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            <Zap className="w-3.5 h-3.5" /> Learner Profiling & AI Targeting Engine
-          </span>
-          {isPro ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-              <Crown className="w-3.5 h-3.5 text-amber-300" /> PRO Learner
+      <div className="max-w-7xl mx-auto space-y-8 p-3 sm:p-6">
+        {/* Top Controls Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              <Zap className="w-3.5 h-3.5" /> Learner Profile & AI Targeting Engine
             </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono font-bold bg-secondary text-muted-foreground border border-border">
-              Free Learner
-            </span>
-          )}
-        </div>
+            {isPro ? (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                <Crown className="w-3.5 h-3.5 text-amber-300" /> PRO Learner
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono font-bold bg-secondary text-muted-foreground border border-border">
+                Free Learner
+              </span>
+            )}
+          </div>
 
-        <div className="flex items-center gap-3">
-          {!isPro && (
+          <div className="flex items-center gap-3">
+            {!isPro && (
+              <button
+                onClick={() => setIsUpgradeOpen(true)}
+                className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl transition shadow-md cursor-pointer"
+              >
+                <Crown className="w-3.5 h-3.5" /> Upgrade to PRO
+              </button>
+            )}
+
             <button
-              onClick={() => setIsUpgradeOpen(true)}
-              className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-4 py-1.5 rounded-xl transition shadow-sm cursor-pointer"
+              onClick={() => handleSave()}
+              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs sm:text-sm font-bold px-5 py-2 rounded-xl transition shadow-lg shadow-emerald-950/20 cursor-pointer"
             >
-              <Crown className="w-3.5 h-3.5" /> Upgrade to PRO
+              <Save className="w-4 h-4" /> {isSaved ? "Saved Successfully!" : "Save Learner Profile"}
             </button>
-          )}
-
-          <button
-            onClick={() => handleSave()}
-            className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl transition shadow-2xs cursor-pointer"
-          >
-            <Save className="w-3.5 h-3.5" /> {isSaved ? "Profile Saved!" : "Save Learner Profile"}
-          </button>
-        </div>
-      </div>
-
-      {/* Split Dual-Pane View */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Sidebar: User Identity & Profile Summary Card */}
-        <div className="lg:col-span-4 bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-6 sticky top-6">
-          <div className="text-center space-y-3">
-            <div className="relative w-20 h-20 mx-auto rounded-full border-4 border-emerald-500/20 bg-emerald-500/10 flex items-center justify-center overflow-hidden">
-              {user?.imageUrl ? (
-                <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <UserCircle className="w-12 h-12 text-emerald-400" />
-              )}
-            </div>
-            <div>
-              <h2 className="text-base font-heading font-bold text-foreground">{fullName}</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">{email}</p>
-            </div>
-          </div>
-
-          {/* Target Role & Level */}
-          <div className="p-4 rounded-2xl bg-secondary/40 border border-border/80 space-y-2 text-xs">
-            <div className="flex justify-between items-center text-muted-foreground font-mono">
-              <span>Target Role:</span>
-              <span className="font-bold text-emerald-400">{profile.targetGoal}</span>
-            </div>
-            <div className="flex justify-between items-center text-muted-foreground font-mono">
-              <span>Level:</span>
-              <span className="font-bold text-foreground">{profile.experienceLevel}</span>
-            </div>
-            <div className="flex justify-between items-center text-muted-foreground font-mono">
-              <span>Commitment:</span>
-              <span className="font-bold text-foreground">{profile.preferences.hoursPerWeek} hrs/week</span>
-            </div>
-          </div>
-
-          <hr className="border-border" />
-
-          {/* Quick Stats Summary */}
-          <div className="space-y-3 text-xs">
-            <div className="flex items-center justify-between p-3 bg-muted/20 border border-border rounded-xl">
-              <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                <BookOpen className="w-3.5 h-3.5 text-emerald-400" /> Completed Courses
-              </span>
-              <span className="font-bold text-foreground">{profile.completedCourses.length} Courses</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-muted/20 border border-border rounded-xl">
-              <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                <Layers className="w-3.5 h-3.5 text-blue-400" /> Skill Gaps Identified
-              </span>
-              <span className="font-bold text-amber-400">{profile.skillGaps.length} Gaps</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-muted/20 border border-border rounded-xl">
-              <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Learner Engine
-              </span>
-              <span className="font-bold text-emerald-400">AI Profile Active</span>
-            </div>
           </div>
         </div>
 
-        {/* Right Canvas Pane: Learner Profiling Configuration Sheet */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Section 1: Career Aspirations & Experience Level */}
-          <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-4">
-            <div className="pb-3 border-b border-border">
-              <h3 className="text-sm font-heading font-bold text-foreground flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-emerald-400" /> Target Learning Objectives & Experience
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Specify your career aspirations so the AI engine can calculate missing skill competencies.
+        {/* Decorative Hero Mesh Glow Banner matching Dashboard */}
+        <div className="relative z-30 rounded-3xl bg-gradient-to-br from-card via-card/95 to-emerald-950/30 border border-emerald-500/30 p-6 sm:p-8 md:p-10 shadow-2xl backdrop-blur-xl">
+          <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+            <div className="absolute -top-28 -right-28 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl" />
+            <div className="absolute -bottom-28 -left-28 w-80 h-80 bg-blue-500/15 rounded-full blur-3xl" />
+          </div>
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs sm:text-sm font-mono font-semibold">
+                <BrainCircuit className="w-4 h-4 text-emerald-400 animate-pulse" /> AI Learner Profile Core
+              </div>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-extrabold tracking-tight text-foreground">
+                Learner Profile & Preferences
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground max-w-2xl leading-relaxed">
+                Configure your known skills, target role goals, study preferences, and completed courses to personalize AI roadmap recommendations.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="p-4 rounded-2xl bg-card/90 border border-border/80 text-center shadow-lg min-w-[140px]">
+                <div className="text-2xl font-extrabold font-mono text-emerald-400">{profile.knownSkills?.length || 0}</div>
+                <div className="text-[11px] font-mono text-muted-foreground uppercase">Known Skills</div>
+              </div>
+              <div className="p-4 rounded-2xl bg-card/90 border border-border/80 text-center shadow-lg min-w-[140px]">
+                <div className="text-2xl font-extrabold font-mono text-blue-400">{profile.targetSkills?.length || 0}</div>
+                <div className="text-[11px] font-mono text-muted-foreground uppercase">Target Skills</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Split Dual-Pane View */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Sidebar: User Identity Card */}
+          <div className="lg:col-span-4 bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-6 sticky top-6">
+            <div className="text-center space-y-3">
+              <div className="relative w-20 h-20 mx-auto rounded-full border-4 border-emerald-500/20 bg-emerald-500/10 flex items-center justify-center overflow-hidden">
+                {user?.imageUrl ? (
+                  <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <UserCircle className="w-12 h-12 text-emerald-400" />
+                )}
+              </div>
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">Target Career Goal / Position</label>
+                <h2 className="text-lg font-heading font-bold text-foreground" suppressHydrationWarning>
+                  {mounted ? fullName : "Learner"}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5" suppressHydrationWarning>
+                  {mounted ? email : "learner@example.com"}
+                </p>
+              </div>
+            </div>
+
+            {/* Target Role Pill */}
+            <div className="p-4 rounded-2xl bg-secondary/40 border border-border/80 space-y-2 text-xs">
+              <div className="flex justify-between items-center text-muted-foreground font-mono">
+                <span>Target Career Role:</span>
+                <Target className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-base font-extrabold text-emerald-400">{profile.targetGoal}</div>
+            </div>
+
+            {/* Personal Details Form */}
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="text-muted-foreground font-mono uppercase block mb-1">Full Name</label>
                 <input
                   type="text"
-                  value={profile.targetGoal}
-                  onChange={(e) => setProfile({ ...profile, targetGoal: e.target.value })}
-                  placeholder="e.g. Full Stack AI Engineer, Lead System Architect"
-                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">Current Experience Level</label>
-                <select
-                  value={profile.experienceLevel}
-                  onChange={(e) => setProfile({ ...profile, experienceLevel: e.target.value as ExperienceLevel })}
-                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                >
-                  <option value="Beginner">Beginner (0-1 years)</option>
-                  <option value="Intermediate">Intermediate (1-3 years)</option>
-                  <option value="Advanced">Advanced (4+ years)</option>
-                </select>
+                <label className="text-muted-foreground font-mono uppercase block mb-1">Location</label>
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
               </div>
             </div>
           </div>
 
-          {/* Section 2: Learning Preferences & Style Engine */}
-          <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-4">
-            <div className="pb-3 border-b border-border">
-              <h3 className="text-sm font-heading font-bold text-foreground flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-blue-400" /> Learning Preferences & Weekly Commitment
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Configure pace and learning style for customized recommendation algorithms.
-              </p>
+          {/* Right Main Pane: Skills & Preferences */}
+          <div className="lg:col-span-8 space-y-8">
+            {/* Target Role Goal & Experience Level Section */}
+            <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-5">
+              <div className="flex items-center gap-2 border-b border-border pb-4">
+                <Target className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-heading font-bold text-lg text-foreground">Target Role & Experience Level</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-mono uppercase text-muted-foreground block mb-1 font-bold">Target Position</label>
+                  <input
+                    type="text"
+                    value={profile.targetGoal}
+                    onChange={(e) => setProfile({ ...profile, targetGoal: e.target.value })}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-mono uppercase text-muted-foreground block mb-1 font-bold">Current Level</label>
+                  <select
+                    value={profile.experienceLevel}
+                    onChange={(e) => setProfile({ ...profile, experienceLevel: e.target.value as ExperienceLevel })}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">Learning Style</label>
-                <select
-                  value={profile.preferences.style}
-                  onChange={(e) =>
-                    setProfile({
-                      ...profile,
-                      preferences: { ...profile.preferences, style: e.target.value as LearningStyle },
-                    })
-                  }
-                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                >
-                  <option value="Project-Based">Hands-on Project-Based</option>
-                  <option value="Video">Video Courses & Tutorials</option>
-                  <option value="Theory/Docs">Reading Docs & Books</option>
-                  <option value="Interactive">Interactive Coding Practice</option>
-                </select>
+            {/* Known Skills & Target Skills Matrix */}
+            <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-6">
+              <div className="flex items-center gap-2 border-b border-border pb-4">
+                <BarChart3 className="w-5 h-5 text-blue-400" />
+                <h3 className="font-heading font-bold text-lg text-foreground">Skill Proficiency Ratings (1 - 5)</h3>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">Learning Pace</label>
-                <select
-                  value={profile.preferences.pace}
-                  onChange={(e) =>
-                    setProfile({
-                      ...profile,
-                      preferences: { ...profile.preferences, pace: e.target.value as LearningPace },
-                    })
-                  }
-                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                >
-                  <option value="Fast">Fast Pace (Accelerated)</option>
-                  <option value="Standard">Standard Pace (Balanced)</option>
-                  <option value="Relaxed">Relaxed Pace (Flexible)</option>
-                </select>
+              {/* Known Skills */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-mono uppercase tracking-wider text-emerald-400 font-bold">Known Skills</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {profile.knownSkills?.map((skill, idx) => (
+                    <div key={idx} className="p-3.5 rounded-2xl bg-secondary/40 border border-border/60 flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground">{skill.name}</span>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((lvl) => (
+                          <button
+                            key={lvl}
+                            onClick={() => updateSkillLevel(skill.name, lvl, true)}
+                            className={`w-6 h-6 rounded-md text-[10px] font-mono font-bold transition ${
+                              lvl <= skill.level ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground hover:bg-card"
+                            }`}
+                          >
+                            {lvl}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">Weekly Time Commitment</label>
-                <div className="flex items-center gap-3">
+              {/* Target Skills */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-mono uppercase tracking-wider text-blue-400 font-bold">Target Role Required Skills</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {profile.targetSkills?.map((skill, idx) => (
+                    <div key={idx} className="p-3.5 rounded-2xl bg-secondary/40 border border-border/60 flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground">{skill.name}</span>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((lvl) => (
+                          <button
+                            key={lvl}
+                            onClick={() => updateSkillLevel(skill.name, lvl, false)}
+                            className={`w-6 h-6 rounded-md text-[10px] font-mono font-bold transition ${
+                              lvl <= skill.level ? "bg-blue-500 text-white" : "bg-muted text-muted-foreground hover:bg-card"
+                            }`}
+                          >
+                            {lvl}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Study Preferences Section */}
+            <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-5">
+              <div className="flex items-center gap-2 border-b border-border pb-4">
+                <Sliders className="w-5 h-5 text-purple-400" />
+                <h3 className="font-heading font-bold text-lg text-foreground">Learning Preferences</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-mono uppercase text-muted-foreground block mb-1 font-bold">Learning Pace</label>
+                  <select
+                    value={profile.preferences.pace}
+                    onChange={(e) =>
+                      setProfile({ ...profile, preferences: { ...profile.preferences, pace: e.target.value as LearningPace } })
+                    }
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-none"
+                  >
+                    <option value="Accelerated">Accelerated</option>
+                    <option value="Standard">Standard</option>
+                    <option value="Relaxed">Relaxed</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-mono uppercase text-muted-foreground block mb-1 font-bold">Learning Style</label>
+                  <select
+                    value={profile.preferences.style}
+                    onChange={(e) =>
+                      setProfile({ ...profile, preferences: { ...profile.preferences, style: e.target.value as LearningStyle } })
+                    }
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-none"
+                  >
+                    <option value="Project-Based">Project-Based</option>
+                    <option value="Video-First">Video-First</option>
+                    <option value="Theory-Driven">Theory-Driven</option>
+                    <option value="Interactive">Interactive</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-mono uppercase text-muted-foreground block mb-1 font-bold">Hours Per Week</label>
                   <input
                     type="number"
-                    min={2}
-                    max={40}
+                    min={1}
+                    max={80}
                     value={profile.preferences.hoursPerWeek}
                     onChange={(e) =>
                       setProfile({
@@ -290,91 +398,75 @@ export default function ProfilePage() {
                         preferences: { ...profile.preferences, hoursPerWeek: parseInt(e.target.value) || 10 },
                       })
                     }
-                    className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none font-bold"
                   />
-                  <span className="text-xs font-mono text-muted-foreground shrink-0">Hrs/wk</span>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Section 3: Completed Courses & Previous Learning History */}
-          <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-4">
-            <div className="pb-3 border-b border-border flex justify-between items-center">
-              <div>
-                <h3 className="text-sm font-heading font-bold text-foreground flex items-center gap-2">
-                  <Award className="w-4 h-4 text-emerald-400" /> Completed Courses & Learning History
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Log previous courses so the AI recommendation engine won't suggest duplicate topics.
-                </p>
+            {/* Completed Courses Log */}
+            <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-border pb-4">
+                <div className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-amber-400" />
+                  <h3 className="font-heading font-bold text-lg text-foreground">Completed Courses Log</h3>
+                </div>
               </div>
-            </div>
 
-            {/* Course adder form */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newCourseTitle}
-                onChange={(e) => setNewCourseTitle(e.target.value)}
-                placeholder="Course Title (e.g., Coursera Deep Learning Specialization)..."
-                className="flex-1 bg-background border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              <select
-                value={newCoursePlatform}
-                onChange={(e) => setNewCoursePlatform(e.target.value)}
-                className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
-              >
-                <option value="Udemy">Udemy</option>
-                <option value="Coursera">Coursera</option>
-                <option value="edX">edX</option>
-                <option value="MIT OCW">MIT OCW</option>
-                <option value="Youtube / Self-Study">Self-Study</option>
-              </select>
-              <button
-                onClick={handleAddCourse}
-                disabled={!newCourseTitle.trim()}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-              >
-                Log Course
-              </button>
-            </div>
-
-            {/* Logged Courses List */}
-            <div className="space-y-2 pt-2">
-              {profile.completedCourses.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between p-3 rounded-2xl bg-secondary/40 border border-border/50 text-xs"
+              {/* Add Course Form */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  placeholder="Course Title (e.g. Next.js Full Stack Architecture)"
+                  value={newCourseTitle}
+                  onChange={(e) => setNewCourseTitle(e.target.value)}
+                  className="flex-1 bg-background border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none"
+                />
+                <select
+                  value={newCoursePlatform}
+                  onChange={(e) => setNewCoursePlatform(e.target.value)}
+                  className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground"
                 >
-                  <div>
-                    <h4 className="font-bold text-foreground">{c.title}</h4>
-                    <p className="text-[11px] text-muted-foreground">{c.platform} • Completed {c.dateCompleted}</p>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    Verified
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+                  <option value="Udemy">Udemy</option>
+                  <option value="Coursera">Coursera</option>
+                  <option value="edX">edX</option>
+                  <option value="Vercel Academy">Vercel Academy</option>
+                </select>
+                <button
+                  onClick={handleAddCourse}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Plus className="w-4 h-4" /> Add Course
+                </button>
+              </div>
 
-          <div className="pt-2">
-            <button
-              onClick={() => handleSave()}
-              className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-lg shadow-emerald-950/20 transition flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <CheckCircle2 className="w-4 h-4" /> Save Profile Preferences & Re-calculate Gaps
-            </button>
+              <div className="space-y-3 pt-2">
+                {profile.completedCourses?.map((course) => (
+                  <div key={course.id} className="p-4 rounded-2xl bg-secondary/40 border border-border/60 flex items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          {course.platform}
+                        </span>
+                        <span className="text-xs font-bold text-foreground">{course.title}</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-1">Completed: {course.dateCompleted}</div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveCourse(course.id)}
+                      className="text-muted-foreground hover:text-red-400 transition cursor-pointer p-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <UpgradeProModal
-        isOpen={isUpgradeOpen}
-        onClose={() => setIsUpgradeOpen(false)}
-        onSuccess={() => checkPro()}
-      />
+      <UpgradeProModal isOpen={isUpgradeOpen} onClose={() => setIsUpgradeOpen(false)} />
     </AppShell>
   );
 }
