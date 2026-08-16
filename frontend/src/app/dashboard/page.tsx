@@ -38,29 +38,31 @@ export default async function DashboardPage({
   let profile: any = null;
   let latestEval: any = null;
 
-  try {
-    const authResult = await auth();
-    userId = authResult.userId;
-    if (userId) {
-      const supabase = await createSupabaseClient();
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("clerk_id", userId)
-        .maybeSingle();
-      profile = profileData;
+  if (!isDemo) {
+    try {
+      const authResult = await auth();
+      userId = authResult.userId;
+      if (userId) {
+        const supabase = await createSupabaseClient();
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("clerk_id", userId)
+          .maybeSingle();
+        profile = profileData;
 
-      const { data: evalData } = await supabase
-        .from("ats_evaluations")
-        .select("overall_score, target_role, detected_skills, missing_skills, created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      latestEval = evalData;
+        const { data: evalData } = await supabase
+          .from("ats_evaluations")
+          .select("overall_score, target_role, detected_skills, missing_skills, created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        latestEval = evalData;
+      }
+    } catch (err) {
+      console.warn("Dashboard Auth/Supabase warning:", err);
     }
-  } catch (err) {
-    console.warn("Dashboard Auth/Supabase warning:", err);
   }
 
   // Determine actual ATS score vs new user vs demo
