@@ -147,7 +147,7 @@ export async function downloadAtsReportPdf(analysisData: any) {
     const html2pdf = html2pdfModule.default || html2pdfModule;
 
     const options = {
-      margin: [10, 10, 10, 10],
+      margin: 10,
       filename: `PathFinder_ATS_Audit_Report_${Date.now()}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, logging: false },
