@@ -264,8 +264,8 @@ export default function LearningPathPage() {
             <div className="h-8 w-px bg-border" />
             <div>
               <div className="text-[10px] text-muted-foreground font-mono uppercase">Target Goal</div>
-              <div className="text-xs font-bold text-emerald-400 truncate max-w-[130px]">
-                {profile.targetGoal}
+              <div className="text-xs font-bold text-emerald-400 truncate max-w-[130px]" suppressHydrationWarning>
+                {mounted ? profile.targetGoal : "Software Engineer"}
               </div>
             </div>
           </div>
