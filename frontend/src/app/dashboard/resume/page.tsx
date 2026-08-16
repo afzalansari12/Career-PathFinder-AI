@@ -6,6 +6,7 @@ import AppShell from "@/components/layout/AppShell";
 import UpgradeProModal from "@/components/pro/UpgradeProModal";
 import { getProStatus } from "@/lib/proStatus";
 import { useUser } from "@clerk/nextjs";
+import { downloadAtsReportPdf } from "@/lib/pdfReportGenerator";
 import {
   UploadCloud,
   FileText,
@@ -25,6 +26,7 @@ import {
   BrainCircuit,
   Zap,
   FileCode,
+  Download,
 } from "lucide-react";
 
 const FREE_AUDIT_LIMIT = 3;
@@ -106,18 +108,24 @@ export default function ResumePage() {
     }
   };
 
-  const handleProPdfDownload = () => {
+  const handleProPdfDownload = async () => {
     if (!isPro) {
       setIsUpgradeOpen(true);
       return;
     }
 
-    setDownloadingPdf(true);
-    setTimeout(() => {
-      setDownloadingPdf(false);
+    if (!analysis) return;
+
+    try {
+      setDownloadingPdf(true);
+      await downloadAtsReportPdf(analysis);
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 3000);
-    }, 1200);
+    } catch (err) {
+      console.error("PDF Download error:", err);
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const isLimitReached = !isPro && auditCount >= FREE_AUDIT_LIMIT;
@@ -140,12 +148,12 @@ export default function ResumePage() {
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-extrabold tracking-tight text-foreground flex items-center gap-3">
                 ATS Resume & Job Match Audit
                 {!isPro ? (
-                  <span className="text-xs font-mono font-normal bg-secondary text-muted-foreground border border-border px-3 py-1 rounded-full">
+                  <span className="text-xs font-mono font-bold bg-secondary text-muted-foreground border border-border px-3.5 py-1 rounded-full">
                     FREE AUDIT
                   </span>
                 ) : (
-                  <span className="text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-full flex items-center gap-1">
-                    <Crown className="w-3.5 h-3.5 text-amber-300" /> PRO UNLIMITED
+                  <span className="text-xs font-mono font-black bg-amber-400 text-slate-950 border border-amber-500 px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+                    <Crown className="w-4 h-4 text-slate-950 fill-slate-950" /> PRO UNLIMITED
                   </span>
                 )}
               </h1>
@@ -158,9 +166,9 @@ export default function ResumePage() {
               {!isPro && (
                 <button
                   onClick={() => setIsUpgradeOpen(true)}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg transition duration-300 cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg transition duration-300 cursor-pointer"
                 >
-                  <Crown className="w-4 h-4" /> Upgrade for Unlimited Audits
+                  <Crown className="w-4 h-4 text-slate-950" /> Upgrade for Unlimited Audits
                 </button>
               )}
             </div>
@@ -262,9 +270,22 @@ export default function ResumePage() {
 
                 <button
                   onClick={handleProPdfDownload}
-                  className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md transition cursor-pointer flex items-center gap-1.5"
+                  disabled={downloadingPdf}
+                  className="px-5 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs shadow-lg transition cursor-pointer flex items-center gap-2 border border-amber-500"
                 >
-                  <Crown className="w-4 h-4" /> Download PDF Report
+                  {downloadingPdf ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-slate-950" /> Generating PDF...
+                    </>
+                  ) : downloadSuccess ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-950" /> Downloaded!
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 text-slate-950" /> Download PDF Report
+                    </>
+                  )}
                 </button>
               </div>
             </div>

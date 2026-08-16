@@ -80,7 +80,7 @@ export default function Sidebar() {
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center shadow-lg shadow-emerald-950/40 group-hover:scale-105 transition-transform">
                 <Zap className="w-4 h-4 text-white" />
               </div>
-                  <div className="flex flex-col">
+              <div className="flex flex-col">
                 <span className="flex items-center gap-1 leading-none text-foreground group-hover:text-emerald-400 transition-colors">
                   PathFinder <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                 </span>
@@ -91,8 +91,8 @@ export default function Sidebar() {
             </Link>
 
             {isPro ? (
-              <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-                <Crown className="w-3 h-3 text-amber-300" /> PRO
+              <span className="text-[10px] font-mono font-black bg-amber-400 text-slate-950 border border-amber-500 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                <Crown className="w-3 h-3 text-slate-950 fill-slate-950" /> PRO
               </span>
             ) : (
               <span className="text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full shadow-sm">
@@ -138,10 +138,10 @@ export default function Sidebar() {
                   {item.badge && (
                     <span
                       className={cn(
-                        "text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border",
+                        "text-[10px] font-mono px-2 py-0.5 rounded-full font-bold shadow-sm transition-transform group-hover:scale-105",
                         isActive
-                          ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                          : "bg-secondary text-muted-foreground border-border"
+                          ? "bg-emerald-400 text-slate-950"
+                          : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                       )}
                     >
                       {item.badge}
@@ -152,8 +152,8 @@ export default function Sidebar() {
             })}
           </div>
 
-          {/* Section 2: AI Intelligence */}
-          <div className="space-y-1.5 pt-1">
+          {/* Section 2: AI Assistant Tools */}
+          <div className="space-y-1.5">
             <div className="px-3 text-xs font-mono uppercase tracking-widest text-muted-foreground/80 font-bold mb-2">
               AI Assistant
             </div>
@@ -187,7 +187,7 @@ export default function Sidebar() {
                   </div>
 
                   {item.badge && (
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-sm">
                       {item.badge}
                     </span>
                   )}
@@ -196,9 +196,9 @@ export default function Sidebar() {
             })}
           </div>
 
-          {/* Section 3: Pro Upgrade Card Widget */}
+          {/* Section 3: Upgrade to PRO Banner */}
           {!isPro ? (
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-emerald-500/10 border border-amber-500/30 space-y-2.5 relative overflow-hidden group">
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-card border border-amber-500/30 space-y-3 shadow-xl relative overflow-hidden group">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-amber-400 uppercase flex items-center gap-1">
                   <Crown className="w-4 h-4" /> PRO Plan
@@ -210,19 +210,19 @@ export default function Sidebar() {
               </p>
               <button
                 onClick={() => setIsUpgradeOpen(true)}
-                className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Upgrade to PRO</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-1">
-              <div className="flex items-center gap-1.5 text-amber-300 font-bold text-xs">
-                <Crown className="w-4 h-4 text-amber-300 animate-pulse" />
+            <div className="p-3.5 rounded-2xl bg-amber-400 border border-amber-500 text-slate-950 space-y-1 shadow-md">
+              <div className="flex items-center gap-1.5 text-slate-950 font-black text-xs">
+                <Crown className="w-4 h-4 text-slate-950 fill-slate-950" />
                 <span>PRO Candidate Unlocked</span>
               </div>
-              <p className="text-xs text-muted-foreground font-mono">
+              <p className="text-[11px] text-slate-900 font-bold font-mono">
                 Unlimited AI & PDF Exports Active
               </p>
             </div>
@@ -283,12 +283,7 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* Upgrade Pro Modal */}
-      <UpgradeProModal
-        isOpen={isUpgradeOpen}
-        onClose={() => setIsUpgradeOpen(false)}
-        onSuccess={() => checkProStatus()}
-      />
+      <UpgradeProModal isOpen={isUpgradeOpen} onClose={() => setIsUpgradeOpen(false)} />
     </>
   );
 }
