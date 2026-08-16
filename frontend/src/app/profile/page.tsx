@@ -33,13 +33,13 @@ import { LearnerProfile, ExperienceLevel, LearningPace, LearningStyle, Completed
 import { DEFAULT_PROFILE, loadStoredProfile, saveStoredProfile, calculateSkillGaps } from "@/lib/learningPathEngine";
 
 const POPULAR_PRESET_COURSES = [
+  { title: "AWS Certified Solutions Architect", platform: "AWS Training" },
   { title: "Next.js 16 & React 19 Full-Stack Architecture", platform: "Vercel Academy" },
   { title: "Data Structures and Algorithms Specialization", platform: "Coursera" },
   { title: "System Design for High-Scalability Applications", platform: "ByteByteGo" },
   { title: "Deep Learning Specialization (PyTorch)", platform: "DeepLearning.AI" },
   { title: "PostgreSQL High Performance & Query Tuning", platform: "Udemy" },
   { title: "Complete Web Development Bootcamp", platform: "Udemy" },
-  { title: "AWS Certified Solutions Architect", platform: "AWS Training" },
 ];
 
 export default function ProfilePage() {
@@ -103,9 +103,28 @@ export default function ProfilePage() {
     }
   };
 
+  const handlePlatformChange = (platform: string) => {
+    setNewCoursePlatform(platform);
+    if (!newCourseTitle.trim()) {
+      if (platform === "AWS Training") setNewCourseTitle("AWS Certified Solutions Architect");
+      else if (platform === "Vercel Academy") setNewCourseTitle("Next.js 16 & React 19 Full-Stack Architecture");
+      else if (platform === "ByteByteGo") setNewCourseTitle("System Design for High-Scalability Applications");
+      else if (platform === "DeepLearning.AI") setNewCourseTitle("Deep Learning Specialization (PyTorch)");
+      else if (platform === "Coursera") setNewCourseTitle("Data Structures and Algorithms Specialization");
+      else if (platform === "Udemy") setNewCourseTitle("Complete Web Development Bootcamp");
+    }
+  };
+
   const handleAddCourse = () => {
-    const titleToAdd = (newCourseTitle || selectedDropdownCourse).trim();
-    if (!titleToAdd) return;
+    let titleToAdd = (newCourseTitle || selectedDropdownCourse).trim();
+    if (!titleToAdd) {
+      if (newCoursePlatform === "AWS Training") titleToAdd = "AWS Certified Solutions Architect";
+      else if (newCoursePlatform === "Vercel Academy") titleToAdd = "Next.js 16 & React 19 Full-Stack Architecture";
+      else if (newCoursePlatform === "ByteByteGo") titleToAdd = "System Design for High-Scalability Applications";
+      else if (newCoursePlatform === "DeepLearning.AI") titleToAdd = "Deep Learning Specialization (PyTorch)";
+      else if (newCoursePlatform === "Coursera") titleToAdd = "Data Structures and Algorithms Specialization";
+      else titleToAdd = `${newCoursePlatform} Certification Course`;
+    }
 
     const course: CompletedCourse = {
       id: `course-${Date.now()}`,
@@ -464,28 +483,27 @@ export default function ProfilePage() {
                 <div className="flex flex-col sm:flex-row gap-3">
                   <input
                     type="text"
-                    placeholder="Search or type custom course title (e.g. Next.js Full Stack Architecture)"
+                    placeholder="Search or type custom course title (e.g. AWS Certified Solutions Architect)"
                     value={newCourseTitle}
                     onChange={(e) => setNewCourseTitle(e.target.value)}
                     className="flex-1 bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground focus:outline-none"
                   />
                   <select
                     value={newCoursePlatform}
-                    onChange={(e) => setNewCoursePlatform(e.target.value)}
+                    onChange={(e) => handlePlatformChange(e.target.value)}
                     className="bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground font-semibold"
                   >
+                    <option value="AWS Training">AWS Training</option>
                     <option value="Udemy">Udemy</option>
                     <option value="Coursera">Coursera</option>
                     <option value="edX">edX</option>
                     <option value="Vercel Academy">Vercel Academy</option>
                     <option value="ByteByteGo">ByteByteGo</option>
                     <option value="DeepLearning.AI">DeepLearning.AI</option>
-                    <option value="AWS Training">AWS Training</option>
                   </select>
                   <button
                     onClick={handleAddCourse}
-                    disabled={!newCourseTitle.trim() && !selectedDropdownCourse.trim()}
-                    className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer shrink-0 shadow-md shadow-emerald-950/20"
+                    className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer shrink-0 shadow-md shadow-emerald-950/20 active:scale-95"
                   >
                     <Plus className="w-4 h-4" /> Add Course
                   </button>
