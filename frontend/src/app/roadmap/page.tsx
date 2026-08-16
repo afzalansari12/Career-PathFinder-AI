@@ -32,6 +32,10 @@ import {
   ResourceRecommendation,
 } from "@/types/learningPath";
 import {
+  DEFAULT_PROFILE,
+  FALLBACK_COURSES,
+  FALLBACK_PROJECTS,
+  FALLBACK_RESOURCES,
   loadStoredProfile,
   saveStoredProfile,
   loadStoredLearningPath,
@@ -49,23 +53,17 @@ export default function LearningPathPage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"path" | "recommendations" | "skillgaps" | "assistant">("path");
 
-  // Lazy state initializers (read localStorage / role recommendations once)
-  const [profile, setProfile] = useState<LearnerProfile>(() => loadStoredProfile());
-  const [learningPath, setLearningPath] = useState<StructuredLearningPath | null>(() => loadStoredLearningPath());
+  // Baseline state matching SSR defaults to guarantee zero hydration mismatch
+  const [profile, setProfile] = useState<LearnerProfile>(DEFAULT_PROFILE);
+  const [learningPath, setLearningPath] = useState<StructuredLearningPath | null>(null);
   const [generating, setGenerating] = useState(false);
   const [promptInput, setPromptInput] = useState("");
   const [activeStep, setActiveStep] = useState<number>(1);
 
-  // Recommendations state initialized directly from profile target role
-  const [courses, setCourses] = useState<CourseRecommendation[]>(() =>
-    getRoleTailoredRecommendations(loadStoredProfile().targetGoal || "Software Engineer").courses
-  );
-  const [projects, setProjects] = useState<ProjectRecommendation[]>(() =>
-    getRoleTailoredRecommendations(loadStoredProfile().targetGoal || "Software Engineer").projects
-  );
-  const [resources, setResources] = useState<ResourceRecommendation[]>(() =>
-    getRoleTailoredRecommendations(loadStoredProfile().targetGoal || "Software Engineer").resources
-  );
+  // Recommendations state matching standard defaults
+  const [courses, setCourses] = useState<CourseRecommendation[]>(FALLBACK_COURSES);
+  const [projects, setProjects] = useState<ProjectRecommendation[]>(FALLBACK_PROJECTS);
+  const [resources, setResources] = useState<ResourceRecommendation[]>(FALLBACK_RESOURCES);
 
   // Modals state
   const [explainerModalItem, setExplainerModalItem] = useState<any | null>(null);
@@ -82,11 +80,6 @@ export default function LearningPathPage() {
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
-
-  // Mount flag to prevent React hydration mismatch between SSR and Client
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Safe API helper that never throws JSON syntax errors or breaks React state
   const safeFetchJson = async (url: string, body: any) => {
@@ -108,19 +101,29 @@ export default function LearningPathPage() {
     }
   };
 
-  // Run initial path generation ONLY ONCE if no stored path exists
+  // Load client stored state ONLY AFTER MOUNTING to guarantee 100% SSR-client hydration match
   useEffect(() => {
+    setMounted(true);
+    const p = loadStoredProfile();
+    setProfile(p);
+
     const currentStoredPath = loadStoredLearningPath();
-    if (!currentStoredPath) {
-      const currentProf = loadStoredProfile();
-      safeFetchJson("/api/learning-path/generate", { profile: currentProf }).then((data) => {
+    if (currentStoredPath) {
+      setLearningPath(currentStoredPath);
+    } else {
+      safeFetchJson("/api/learning-path/generate", { profile: p }).then((data) => {
         if (data && data.path) {
           setLearningPath(data.path);
           saveStoredLearningPath(data.path);
         }
       });
     }
-  }, []); // Strictly empty dependency array — executes ONCE on mount
+
+    const roleRecs = getRoleTailoredRecommendations(p.targetGoal || "Software Engineer");
+    setCourses(roleRecs.courses);
+    setProjects(roleRecs.projects);
+    setResources(roleRecs.resources);
+  }, []);
 
   // Explicit user trigger for generating path from prompt / role search
   const handleNaturalLanguageConverse = useCallback(
@@ -326,7 +329,10 @@ export default function LearningPathPage() {
                 <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <span
+                    className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                    suppressHydrationWarning
+                  >
                     {tab.badge}
                   </span>
                 )}
