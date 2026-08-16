@@ -25,7 +25,7 @@ import {
 const MAIN_NAV = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "ATS Resume Audit", href: "/dashboard/resume", icon: FileText, badge: "AI" },
-  { label: "Career Roadmap", href: "/roadmap", icon: Map },
+  { label: "Learning Path & Recommendations", href: "/roadmap", icon: Map, badge: "AI Path" },
   { label: "Live Job Matches", href: "/jobs", icon: Briefcase },
   { label: "Mock AI Interview", href: "/interview", icon: Video },
 ];

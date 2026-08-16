@@ -1,3 +1,4 @@
+// frontend/src/app/profile/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -15,7 +16,15 @@ import {
   ShieldCheck,
   Crown,
   ArrowRight,
+  BookOpen,
+  Sliders,
+  Award,
+  Layers,
+  Clock,
+  Zap,
 } from "lucide-react";
+import { LearnerProfile, ExperienceLevel, LearningPace, LearningStyle, CompletedCourse } from "@/types/learningPath";
+import { loadStoredProfile, saveStoredProfile, calculateSkillGaps } from "@/lib/learningPathEngine";
 
 export default function ProfilePage() {
   const { user } = useUser();
@@ -35,18 +44,48 @@ export default function ProfilePage() {
     return () => window.removeEventListener("pro_status_updated", checkPro);
   }, [userId]);
 
-  // Profile Form State
+  // Learner Profile State
+  const [profile, setProfile] = useState<LearnerProfile>(loadStoredProfile());
+
+  // Additional basic profile fields
   const [fullName, setFullName] = useState(user?.fullName || "Afzal Ansari");
   const [email] = useState(user?.primaryEmailAddress?.emailAddress || "afzalansari12ab@gmail.com");
-  const [targetRole, setTargetRole] = useState("Software Development Engineer Intern");
-  const [targetCompany, setTargetCompany] = useState("Amazon / Big Tech");
   const [location, setLocation] = useState("Delhi, India");
-  const [skills, setSkills] = useState("C++, Python, React, TypeScript, Next.js, Node.js");
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  // New course state
+  const [newCourseTitle, setNewCourseTitle] = useState("");
+  const [newCoursePlatform, setNewCoursePlatform] = useState("Udemy");
+
+  const handleSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const updated = {
+      ...profile,
+      skillGaps: calculateSkillGaps(profile),
+      lastUpdated: new Date().toISOString(),
+    };
+    setProfile(updated);
+    saveStoredProfile(updated);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
+  };
+
+  const handleAddCourse = () => {
+    if (!newCourseTitle.trim()) return;
+    const course: CompletedCourse = {
+      id: `course-${Date.now()}`,
+      title: newCourseTitle.trim(),
+      platform: newCoursePlatform,
+      dateCompleted: new Date().toISOString().split("T")[0],
+      rating: 5,
+      keySkillsLearned: ["Software Architecture", "Core Concepts"],
+    };
+    const updated: LearnerProfile = {
+      ...profile,
+      completedCourses: [course, ...profile.completedCourses],
+    };
+    setProfile(updated);
+    saveStoredProfile(updated);
+    setNewCourseTitle("");
   };
 
   return (
@@ -54,16 +93,16 @@ export default function ProfilePage() {
       {/* Top Controls Bar */}
       <div className="-mt-6 -mx-6 lg:-mt-10 lg:-mx-10 border-b border-border bg-card px-6 py-3 mb-6 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <Sparkles className="w-3.5 h-3.5" /> Candidate Profile & Targeting
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+            <Zap className="w-3.5 h-3.5" /> Learner Profiling & AI Targeting Engine
           </span>
           {isPro ? (
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-              <Crown className="w-3.5 h-3.5 text-amber-300" /> PRO Candidate
+              <Crown className="w-3.5 h-3.5 text-amber-300" /> PRO Learner
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono font-bold bg-secondary text-muted-foreground border border-border">
-              Free Candidate
+              Free Learner
             </span>
           )}
         </div>
@@ -79,181 +118,255 @@ export default function ProfilePage() {
           )}
 
           <button
-            onClick={handleSave}
+            onClick={() => handleSave()}
             className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl transition shadow-2xs cursor-pointer"
           >
-            <Save className="w-3.5 h-3.5" /> {isSaved ? "Saved!" : "Save Profile"}
+            <Save className="w-3.5 h-3.5" /> {isSaved ? "Profile Saved!" : "Save Learner Profile"}
           </button>
         </div>
       </div>
 
       {/* Split Dual-Pane View */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Sticky Sidebar: User Identity Card */}
-        <div className="lg:col-span-4 bg-card border border-border rounded-2xl p-6 shadow-2xs space-y-6 sticky top-6">
+        {/* Left Sidebar: User Identity & Profile Summary Card */}
+        <div className="lg:col-span-4 bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-6 sticky top-6">
           <div className="text-center space-y-3">
-            <div className="relative w-20 h-20 mx-auto rounded-full border-4 border-emerald-500/20 bg-emerald-50/50 flex items-center justify-center overflow-hidden">
+            <div className="relative w-20 h-20 mx-auto rounded-full border-4 border-emerald-500/20 bg-emerald-500/10 flex items-center justify-center overflow-hidden">
               {user?.imageUrl ? (
                 <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <UserCircle className="w-12 h-12 text-emerald-700" />
+                <UserCircle className="w-12 h-12 text-emerald-400" />
               )}
             </div>
             <div>
-              <h2 className="text-base font-heading font-bold text-foreground">
-                {fullName}
-              </h2>
+              <h2 className="text-base font-heading font-bold text-foreground">{fullName}</h2>
               <p className="text-xs text-muted-foreground mt-0.5">{email}</p>
             </div>
           </div>
 
-          {/* Tier Status Box */}
-          <div className="p-3.5 rounded-2xl bg-secondary/40 border border-border/80 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-mono uppercase text-[10px]">Subscription Plan</span>
-              {isPro ? (
-                <span className="font-bold text-amber-300 flex items-center gap-1 font-mono">
-                  <Crown className="w-3.5 h-3.5" /> PRO ACTIVE
-                </span>
-              ) : (
-                <span className="font-bold text-muted-foreground font-mono">FREE TIER</span>
-              )}
+          {/* Target Role & Level */}
+          <div className="p-4 rounded-2xl bg-secondary/40 border border-border/80 space-y-2 text-xs">
+            <div className="flex justify-between items-center text-muted-foreground font-mono">
+              <span>Target Role:</span>
+              <span className="font-bold text-emerald-400">{profile.targetGoal}</span>
             </div>
-
-            {!isPro ? (
-              <button
-                onClick={() => setIsUpgradeOpen(true)}
-                className="w-full py-1.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer"
-              >
-                <span>Upgrade for Unlimited Scans</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <p className="text-[10px] text-emerald-400 font-mono text-center">
-                👑 Unlimited AI Compute & PDF Export Unlocked
-              </p>
-            )}
+            <div className="flex justify-between items-center text-muted-foreground font-mono">
+              <span>Level:</span>
+              <span className="font-bold text-foreground">{profile.experienceLevel}</span>
+            </div>
+            <div className="flex justify-between items-center text-muted-foreground font-mono">
+              <span>Commitment:</span>
+              <span className="font-bold text-foreground">{profile.preferences.hoursPerWeek} hrs/week</span>
+            </div>
           </div>
 
           <hr className="border-border" />
 
-          {/* Quick Info Summary */}
+          {/* Quick Stats Summary */}
           <div className="space-y-3 text-xs">
-            <div className="flex items-center justify-between p-3 bg-accent/40 border border-border rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-muted/20 border border-border rounded-xl">
               <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                <Briefcase className="w-3.5 h-3.5 text-primary" /> Target Role
+                <BookOpen className="w-3.5 h-3.5 text-emerald-400" /> Completed Courses
               </span>
-              <span className="font-bold text-foreground truncate max-w-[140px]">{targetRole}</span>
+              <span className="font-bold text-foreground">{profile.completedCourses.length} Courses</span>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-accent/40 border border-border rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-muted/20 border border-border rounded-xl">
               <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                <MapPin className="w-3.5 h-3.5 text-primary" /> Location
+                <Layers className="w-3.5 h-3.5 text-blue-400" /> Skill Gaps Identified
               </span>
-              <span className="font-bold text-foreground">{location}</span>
+              <span className="font-bold text-amber-400">{profile.skillGaps.length} Gaps</span>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-accent/40 border border-border rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-muted/20 border border-border rounded-xl">
               <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Account Auth
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Learner Engine
               </span>
-              <span className="font-bold text-emerald-700">Clerk Verified</span>
+              <span className="font-bold text-emerald-400">AI Profile Active</span>
             </div>
           </div>
         </div>
 
-        {/* Right Canvas Pane: Editable Configuration Sheet */}
-        <div className="lg:col-span-8 bg-card border border-border rounded-2xl p-8 shadow-2xs space-y-6">
-          <div className="pb-4 border-b border-border">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Profile & ATS Targeting Settings
-            </h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              This data feeds directly into your ATS scoring engine, interview simulation prompts, and live job matching filters.
-            </p>
+        {/* Right Canvas Pane: Learner Profiling Configuration Sheet */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Section 1: Career Aspirations & Experience Level */}
+          <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-4">
+            <div className="pb-3 border-b border-border">
+              <h3 className="text-sm font-heading font-bold text-foreground flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-emerald-400" /> Target Learning Objectives & Experience
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Specify your career aspirations so the AI engine can calculate missing skill competencies.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1.5">Target Career Goal / Position</label>
+                <input
+                  type="text"
+                  value={profile.targetGoal}
+                  onChange={(e) => setProfile({ ...profile, targetGoal: e.target.value })}
+                  placeholder="e.g. Full Stack AI Engineer, Lead System Architect"
+                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1.5">Current Experience Level</label>
+                <select
+                  value={profile.experienceLevel}
+                  onChange={(e) => setProfile({ ...profile, experienceLevel: e.target.value as ExperienceLevel })}
+                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="Beginner">Beginner (0-1 years)</option>
+                  <option value="Intermediate">Intermediate (1-3 years)</option>
+                  <option value="Advanced">Advanced (4+ years)</option>
+                </select>
+              </div>
+            </div>
           </div>
 
-          <form onSubmit={handleSave} className="space-y-5">
-            {/* Full Name & Email */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Section 2: Learning Preferences & Style Engine */}
+          <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-4">
+            <div className="pb-3 border-b border-border">
+              <h3 className="text-sm font-heading font-bold text-foreground flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-blue-400" /> Learning Preferences & Weekly Commitment
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Configure pace and learning style for customized recommendation algorithms.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">Full Name</label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
-                />
+                <label className="block text-xs font-bold text-foreground mb-1.5">Learning Style</label>
+                <select
+                  value={profile.preferences.style}
+                  onChange={(e) =>
+                    setProfile({
+                      ...profile,
+                      preferences: { ...profile.preferences, style: e.target.value as LearningStyle },
+                    })
+                  }
+                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="Project-Based">Hands-on Project-Based</option>
+                  <option value="Video">Video Courses & Tutorials</option>
+                  <option value="Theory/Docs">Reading Docs & Books</option>
+                  <option value="Interactive">Interactive Coding Practice</option>
+                </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">Email Address</label>
-                <input
-                  type="email"
-                  value={email}
-                  disabled
-                  className="w-full bg-secondary/60 border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-muted-foreground cursor-not-allowed"
-                />
+                <label className="block text-xs font-bold text-foreground mb-1.5">Learning Pace</label>
+                <select
+                  value={profile.preferences.pace}
+                  onChange={(e) =>
+                    setProfile({
+                      ...profile,
+                      preferences: { ...profile.preferences, pace: e.target.value as LearningPace },
+                    })
+                  }
+                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="Fast">Fast Pace (Accelerated)</option>
+                  <option value="Standard">Standard Pace (Balanced)</option>
+                  <option value="Relaxed">Relaxed Pace (Flexible)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1.5">Weekly Time Commitment</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min={2}
+                    max={40}
+                    value={profile.preferences.hoursPerWeek}
+                    onChange={(e) =>
+                      setProfile({
+                        ...profile,
+                        preferences: { ...profile.preferences, hoursPerWeek: parseInt(e.target.value) || 10 },
+                      })
+                    }
+                    className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  />
+                  <span className="text-xs font-mono text-muted-foreground shrink-0">Hrs/wk</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Completed Courses & Previous Learning History */}
+          <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-4">
+            <div className="pb-3 border-b border-border flex justify-between items-center">
+              <div>
+                <h3 className="text-sm font-heading font-bold text-foreground flex items-center gap-2">
+                  <Award className="w-4 h-4 text-emerald-400" /> Completed Courses & Learning History
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Log previous courses so the AI recommendation engine won't suggest duplicate topics.
+                </p>
               </div>
             </div>
 
-            {/* Target Role & Target Company */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">Target Engineering Role</label>
-                <input
-                  type="text"
-                  value={targetRole}
-                  onChange={(e) => setTargetRole(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">Target Company / Track</label>
-                <input
-                  type="text"
-                  value={targetCompany}
-                  onChange={(e) => setTargetCompany(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Location */}
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1.5">Preferred Location</label>
+            {/* Course adder form */}
+            <div className="flex gap-2">
               <input
                 type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs font-medium text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
+                value={newCourseTitle}
+                onChange={(e) => setNewCourseTitle(e.target.value)}
+                placeholder="Course Title (e.g., Coursera Deep Learning Specialization)..."
+                className="flex-1 bg-background border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
-            </div>
-
-            {/* Core Skills */}
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1.5">
-                Core Skill Keywords (Comma Separated)
-              </label>
-              <textarea
-                rows={3}
-                value={skills}
-                onChange={(e) => setSkills(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl p-3.5 text-xs font-mono text-foreground focus:ring-2 focus:ring-ring focus:outline-none resize-none"
-              />
-            </div>
-
-            {/* Submit Button */}
-            <div className="pt-2">
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-2xs cursor-pointer"
+              <select
+                value={newCoursePlatform}
+                onChange={(e) => setNewCoursePlatform(e.target.value)}
+                className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
               >
-                <CheckCircle2 className="w-4 h-4" /> Save Profile Preferences
+                <option value="Udemy">Udemy</option>
+                <option value="Coursera">Coursera</option>
+                <option value="edX">edX</option>
+                <option value="MIT OCW">MIT OCW</option>
+                <option value="Youtube / Self-Study">Self-Study</option>
+              </select>
+              <button
+                onClick={handleAddCourse}
+                disabled={!newCourseTitle.trim()}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Log Course
               </button>
             </div>
-          </form>
+
+            {/* Logged Courses List */}
+            <div className="space-y-2 pt-2">
+              {profile.completedCourses.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-secondary/40 border border-border/50 text-xs"
+                >
+                  <div>
+                    <h4 className="font-bold text-foreground">{c.title}</h4>
+                    <p className="text-[11px] text-muted-foreground">{c.platform} • Completed {c.dateCompleted}</p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    Verified
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <button
+              onClick={() => handleSave()}
+              className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-lg shadow-emerald-950/20 transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <CheckCircle2 className="w-4 h-4" /> Save Profile Preferences & Re-calculate Gaps
+            </button>
+          </div>
         </div>
       </div>
 

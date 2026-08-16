@@ -30,9 +30,12 @@
   - **Formatting & Parseability (20 pts)**: Bullet density, word count ratios.
 - **AI Recruiter Feedback**: Powered by Groq Llama-3.3-70B to generate narrative executive summaries, key strengths, and bullet-by-bullet improvement items.
 
-### 2. 🗺️ Target Role Career Roadmap Generator (`/roadmap`)
-- Custom AI-generated 4-phase milestone roadmaps tailored specifically to bridge a candidate's current known stack to their target position (*Full Stack Engineer, AI/ML Specialist, DevOps Architect, Data Scientist*).
-- Interactive learning objectives, key topics to master, milestone project challenges, and achievement progress tracking.
+### 2. 🎯 AI-Powered Personalized Learning Path Recommender (`/roadmap`)
+- **Natural Language Conversational Interface**: Learners describe their target career goals, available time, and learning preferences in plain English to generate custom roadmaps.
+- **Learner Profiling Engine**: Captures experience levels, known vs target skills, learning style (Project-Based, Video, Theory, Interactive), and completed course history (`/profile`).
+- **Curated Course & Project Recommendations**: Recommends top courses, hands-on portfolio projects, and certifications complete with match percentages and AI **"Why Recommended"** explainer modals.
+- **Milestone Roadmaps & Quizzes**: Multi-phase progressive roadmaps with prerequisite dependencies, project challenges, phase self-assessment quizzes, and real-time AI path adaptability.
+- **Skill Competency Radar Matrix**: Visual Recharts radar chart comparing current proficiency vs target requirement levels.
 
 ### 3. 💼 Live Tech Jobs with Direct Apply Links (`/jobs`)
 - Real-time tech vacancies aggregated from **Adzuna API** and verified openings at top companies (*Vercel, OpenAI, Stripe, GitHub, Google DeepMind*).
