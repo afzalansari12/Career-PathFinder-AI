@@ -168,6 +168,24 @@ Return JSON matching this exact structure:
 }
 
 export async function evaluateInterview(question: string, answer: string) {
+  const cleanAnswer = (answer || "").trim();
+
+  // 1. Detect gibberish, keyboard smashes, or extremely low word counts
+  const isGibberish =
+    cleanAnswer.length < 15 ||
+    /^[a-zA-Z0-9]{1,12}$/.test(cleanAnswer) ||
+    /^[^a-zA-Z0-9\s]+$/.test(cleanAnswer) ||
+    /^(ndnwdfh|asdf|qwerty|test|abc|xyz|12345|none|idk)$/i.test(cleanAnswer);
+
+  if (isGibberish) {
+    return {
+      score: 12,
+      feedback:
+        "The response appears to be random text or gibberish. It does not address the technical interview question. Please provide a clear engineering explanation.",
+    };
+  }
+
+  // 2. Query LLM for actual evaluation
   try {
     const response = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
@@ -175,38 +193,38 @@ export async function evaluateInterview(question: string, answer: string) {
       messages: [
         {
           role: "system",
-          content: `You are an expert, strict Senior Technical Interviewer evaluating a candidate's response.
+          content: `You are an expert, strict Senior Technical Interviewer scoring candidate answers.
 
-CRITICAL SCORING RULE:
-You MUST evaluate how directly and accurately the "Candidate Answer" answers the SPECIFIC "Interview Question" provided. Do NOT award high points to accurate text that is irrelevant or off-topic for the question asked.
-
-Evaluation Rubric:
-1. Question Relevance (40 points): Does the answer directly address the core topic of the specific question? If the answer is off-topic, generic boilerplate, or answers a different question, cap the total score below 30.
-2. Technical Accuracy (30 points): Are the technical details, protocols, and architectural concepts correct for this question?
-3. Depth & Completeness (20 points): Does it address scale, performance, edge cases, or trade-offs specific to the prompt?
-4. Clarity (10 points): Is the answer well-structured and easy to follow?
+STRICT SCORING RULES:
+1. If candidate answer is off-topic, random words, or does not address the question, score MUST be between 0 and 20.
+2. If candidate answer is vague, generic, or incomplete, score MUST be between 25 and 55.
+3. If candidate answer correctly addresses architecture, performance, protocols, and trade-offs, score MUST be between 70 and 95.
 
 Return JSON matching this exact structure:
 {
-  "score": 85,
+  "score": 15,
   "feedback": "Concise feedback explaining why this score was awarded relative to the question asked."
 }`,
         },
         {
           role: "user",
-          content: `Interview Question: "${question}"\nCandidate Answer: "${answer}"`,
+          content: `Interview Question: "${question}"\nCandidate Answer: "${cleanAnswer}"`,
         },
       ],
       temperature: 0.1,
     });
 
     const content = response.choices[0]?.message?.content || "{}";
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+    return {
+      score: typeof parsed.score === "number" ? Math.min(100, Math.max(0, parsed.score)) : 15,
+      feedback: parsed.feedback || "Answer evaluated relative to technical prompt.",
+    };
   } catch (error) {
     console.error("Evaluate Interview Error:", error);
     return {
-      score: 50,
-      feedback: "Failed to evaluate response context. Please retry submitting your answer.",
+      score: 15,
+      feedback: "Answer does not provide valid technical depth for evaluation. Please retry with a detailed explanation.",
     };
   }
 }

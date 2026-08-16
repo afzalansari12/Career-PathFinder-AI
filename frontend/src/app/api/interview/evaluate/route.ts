@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   try {
     const { question, answer, targetRole } = await req.json();
 
-    if (!question || !answer) {
+    if (!question || !answer || !answer.trim()) {
       return NextResponse.json(
         { error: "Question and answer fields are required for evaluation." },
         { status: 400 }
@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      score: evaluation.score || 75,
-      feedback: evaluation.feedback || "Good response covering key technical concepts.",
+      score: typeof evaluation.score === "number" ? evaluation.score : 15,
+      feedback: evaluation.feedback || "Answer evaluated relative to technical prompt.",
       targetRole: targetRole || "Software Engineer",
     });
   } catch (error: any) {

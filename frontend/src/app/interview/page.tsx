@@ -119,15 +119,15 @@ export default function InterviewPage() {
       if (res.ok) {
         const data = await res.json();
         setEvaluation({
-          score: data.score || 85,
+          score: typeof data.score === "number" ? data.score : 15,
           feedback: data.feedback || "Solid response demonstrating core technical principles and clear problem-solving rationale.",
         });
       }
     } catch (err) {
       console.error("Evaluation error:", err);
       setEvaluation({
-        score: 82,
-        feedback: "Your response covered key architectural concepts. Emphasize performance trade-offs, caching, and edge cases.",
+        score: 15,
+        feedback: "Your response could not be properly scored. Please retry with a detailed explanation.",
       });
     } finally {
       setEvaluating(false);
