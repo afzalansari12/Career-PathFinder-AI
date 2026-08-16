@@ -35,9 +35,7 @@ export default function ResumePage() {
   const { user } = useUser();
   const [mounted, setMounted] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [jobDescription, setJobDescription] = useState(
-    "Full Stack Software Engineer position requiring TypeScript, React, Next.js, System Design, PostgreSQL performance tuning, and Docker containerization."
-  );
+  const [jobDescription, setJobDescription] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<any>(null);
