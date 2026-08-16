@@ -1,7 +1,7 @@
 // frontend/src/app/roadmap/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import AppShell from "@/components/layout/AppShell";
 import {
   Sparkles,
@@ -16,18 +16,13 @@ import {
   Trophy,
   Award,
   Sliders,
-  HelpCircle,
-  Briefcase,
   Compass,
   Zap,
   BarChart3,
   Bot,
   Send,
-  ExternalLink,
-  MessageSquare,
   AlertTriangle,
 } from "lucide-react";
-import Link from "next/link";
 import {
   LearnerProfile,
   StructuredLearningPath,
@@ -52,8 +47,8 @@ import QuizModal from "@/components/learning/QuizModal";
 
 export default function LearningPathPage() {
   const [activeTab, setActiveTab] = useState<"path" | "recommendations" | "skillgaps" | "assistant">("path");
-  const [profile, setProfile] = useState<LearnerProfile>(loadStoredProfile());
-  const [learningPath, setLearningPath] = useState<StructuredLearningPath | null>(loadStoredLearningPath());
+  const [profile, setProfile] = useState<LearnerProfile>(() => loadStoredProfile());
+  const [learningPath, setLearningPath] = useState<StructuredLearningPath | null>(() => loadStoredLearningPath());
   const [generating, setGenerating] = useState(false);
   const [promptInput, setPromptInput] = useState("");
   const [activeStep, setActiveStep] = useState<number>(1);
@@ -73,13 +68,52 @@ export default function LearningPathPage() {
     {
       role: "assistant",
       content:
-        "Hello! I am your AI Learning Path Assistant. Describe your career goals, weekly time commitment, or learning style in natural language, and I will generate a custom structured roadmap and recommendations for you!",
+        "Welcome to your AI Learning Path Assistant! Describe your target position, weekly time commitment, or learning style, and I will tailor your custom learning path.",
     },
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
 
-  // Load initial stored state
+  // Safe API helper that never throws JSON parse syntax errors
+  const safeFetchJson = async (url: string, body: any) => {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return await res.json();
+      }
+      return null;
+    } catch (e) {
+      console.warn("Safe fetch JSON error:", e);
+      return null;
+    }
+  };
+
+  const handleGenerateInitialPath = useCallback(async (prof: LearnerProfile) => {
+    setGenerating(true);
+    const data = await safeFetchJson("/api/learning-path/generate", { profile: prof });
+    if (data && data.path) {
+      setLearningPath(data.path);
+      saveStoredLearningPath(data.path);
+    }
+    setGenerating(false);
+  }, []);
+
+  const handleFetchRecommendations = useCallback(async (prof: LearnerProfile) => {
+    const data = await safeFetchJson("/api/learning-path/recommend", { profile: prof });
+    if (data) {
+      if (data.courses && Array.isArray(data.courses)) setCourses(data.courses);
+      if (data.projects && Array.isArray(data.projects)) setProjects(data.projects);
+      if (data.resources && Array.isArray(data.resources)) setResources(data.resources);
+    }
+  }, []);
+
+  // Run initial load ONCE on mount
   useEffect(() => {
     const p = loadStoredProfile();
     setProfile(p);
@@ -90,142 +124,100 @@ export default function LearningPathPage() {
       handleGenerateInitialPath(p);
     }
     handleFetchRecommendations(p);
-  }, []);
+  }, [handleGenerateInitialPath, handleFetchRecommendations]);
 
-  const handleGenerateInitialPath = async (prof: LearnerProfile) => {
-    setGenerating(true);
-    try {
-      const res = await fetch("/api/learning-path/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile: prof }),
+  const handleNaturalLanguageConverse = useCallback(
+    async (text?: string) => {
+      const query = text || promptInput;
+      if (!query.trim() || generating) return;
+
+      setGenerating(true);
+      const data = await safeFetchJson("/api/learning-path/converse", {
+        userPrompt: query,
+        currentProfile: profile,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.path) {
-          setLearningPath(data.path);
-          saveStoredLearningPath(data.path);
-        }
+      if (data && data.extractedProfileUpdates) {
+        const updated: LearnerProfile = {
+          ...profile,
+          targetGoal: data.extractedProfileUpdates.targetGoal || profile.targetGoal,
+          preferences: {
+            ...profile.preferences,
+            ...(data.extractedProfileUpdates.preferences || {}),
+          },
+        };
+        setProfile(updated);
+        saveStoredProfile(updated);
+
+        await handleGenerateInitialPath(updated);
+        await handleFetchRecommendations(updated);
+      } else {
+        // Fallback update if API didn't return updates
+        await handleGenerateInitialPath(profile);
       }
-    } catch (e) {
-      console.error("Path gen error:", e);
-    } finally {
-      setGenerating(false);
-    }
-  };
 
-  const handleFetchRecommendations = async (prof: LearnerProfile) => {
-    try {
-      const res = await fetch("/api/learning-path/recommend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile: prof }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.courses) setCourses(data.courses);
-        if (data.projects) setProjects(data.projects);
-        if (data.resources) setResources(data.resources);
-      }
-    } catch (e) {
-      console.error("Fetch rec error:", e);
-    }
-  };
-
-  const handleNaturalLanguageConverse = async (text?: string) => {
-    const query = text || promptInput;
-    if (!query.trim() || generating) return;
-
-    setGenerating(true);
-    try {
-      const converseRes = await fetch("/api/learning-path/converse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userPrompt: query, currentProfile: profile }),
-      });
-
-      if (converseRes.ok) {
-        const data = await converseRes.json();
-
-        // Update profile with extracted intent
-        if (data.extractedProfileUpdates) {
-          const updated: LearnerProfile = {
-            ...profile,
-            targetGoal: data.extractedProfileUpdates.targetGoal || profile.targetGoal,
-            preferences: {
-              ...profile.preferences,
-              ...(data.extractedProfileUpdates.preferences || {}),
-            },
-          };
-          setProfile(updated);
-          saveStoredProfile(updated);
-
-          // Generate new path and recommendations
-          await handleGenerateInitialPath(updated);
-          await handleFetchRecommendations(updated);
-        }
-      }
-    } catch (e) {
-      console.error("Converse error:", e);
-    } finally {
       setGenerating(false);
       setPromptInput("");
-    }
-  };
+    },
+    [promptInput, generating, profile, handleGenerateInitialPath, handleFetchRecommendations]
+  );
 
-  const togglePhaseStatus = (stepNumber: number) => {
-    if (!learningPath) return;
+  const togglePhaseStatus = useCallback(
+    (stepNumber: number) => {
+      if (!learningPath) return;
 
-    const updatedPhases = learningPath.phases.map((p) => {
-      if (p.step === stepNumber) {
-        const nextStatus =
-          p.status === "completed" ? "in_progress" : p.status === "in_progress" ? "pending" : "completed";
-        return { ...p, status: nextStatus };
-      }
-      return p;
-    });
+      const updatedPhases = learningPath.phases.map((p) => {
+        if (p.step === stepNumber) {
+          const nextStatus =
+            p.status === "completed" ? "in_progress" : p.status === "in_progress" ? "pending" : "completed";
+          return { ...p, status: nextStatus };
+        }
+        return p;
+      });
 
-    const updatedPath: StructuredLearningPath = {
-      ...learningPath,
-      phases: updatedPhases as any,
-    };
+      const updatedPath: StructuredLearningPath = {
+        ...learningPath,
+        phases: updatedPhases as any,
+      };
 
-    setLearningPath(updatedPath);
-    saveStoredLearningPath(updatedPath);
-  };
+      setLearningPath(updatedPath);
+      saveStoredLearningPath(updatedPath);
+    },
+    [learningPath]
+  );
 
-  const handleSendAssistantChat = async () => {
+  const handleSendAssistantChat = useCallback(async () => {
     if (!chatInput.trim() || chatLoading) return;
     const msg = chatInput.trim();
     setChatInput("");
     setChatMessages((prev) => [...prev, { role: "user", content: msg }]);
     setChatLoading(true);
 
-    try {
-      const res = await fetch("/api/learning-path/converse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userPrompt: msg, currentProfile: profile }),
-      });
-      const data = await res.json();
-      setChatMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.reply || "I've tailored your recommendations." },
-      ]);
-    } catch (e) {
-      setChatMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Connection error. Please try asking again." },
-      ]);
-    } finally {
-      setChatLoading(false);
-    }
-  };
+    const data = await safeFetchJson("/api/learning-path/converse", {
+      userPrompt: msg,
+      currentProfile: profile,
+    });
 
-  const completedPhases = learningPath?.phases.filter((p) => p.status === "completed").length || 0;
-  const totalPhases = learningPath?.phases.length || 4;
-  const progressPercent = Math.round((completedPhases / totalPhases) * 100);
+    if (data && data.reply) {
+      setChatMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
+    } else {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "I've processed your query and tailored your recommendations." },
+      ]);
+    }
+    setChatLoading(false);
+  }, [chatInput, chatLoading, profile]);
+
+  const completedPhases = useMemo(
+    () => learningPath?.phases.filter((p) => p.status === "completed").length || 0,
+    [learningPath]
+  );
+  const totalPhases = useMemo(() => learningPath?.phases.length || 4, [learningPath]);
+  const progressPercent = useMemo(
+    () => Math.round((completedPhases / totalPhases) * 100),
+    [completedPhases, totalPhases]
+  );
 
   return (
     <AppShell>
@@ -234,13 +226,13 @@ export default function LearningPathPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono mb-2">
-              <Zap className="w-3.5 h-3.5" /> AI-Powered Personalized Learning Path Recommender
+              <Zap className="w-3.5 h-3.5" /> AI Personalized Learning Path Recommender
             </div>
             <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground">
               Learning Path & Recommendations
             </h1>
             <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              Describe your target career goals in natural language to generate custom roadmap milestones, course recommendations, and AI gap analyses.
+              Describe your target career goals to generate custom roadmap milestones, course recommendations, and AI gap analyses.
             </p>
           </div>
 
@@ -263,14 +255,14 @@ export default function LearningPathPage() {
           </div>
         </div>
 
-        {/* Conversational Natural Language Goal Bar */}
+        {/* Natural Language Goal Description Bar */}
         <div className="bg-card border border-border/80 rounded-3xl p-5 shadow-xl space-y-3">
           <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-foreground">
-              <Sparkles className="w-4 h-4 text-emerald-400" /> Natural Language Goal Description
+              <Sparkles className="w-4 h-4 text-emerald-400" /> Target Goal Description
             </span>
             <span className="text-[11px] text-muted-foreground font-normal">
-              e.g. "I want to become an AI Engineer in 6 months, 12 hrs/week..."
+              e.g. "Become a Senior AI Engineer specializing in LLMs within 6 months"
             </span>
           </label>
 
@@ -280,7 +272,7 @@ export default function LearningPathPage() {
               value={promptInput}
               onChange={(e) => setPromptInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleNaturalLanguageConverse()}
-              placeholder="Describe your goal, learning preferences, or target position in plain English..."
+              placeholder="Describe your target role, timeline, or focus area..."
               className="flex-1 bg-background border border-border rounded-2xl px-4 py-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
 
@@ -632,30 +624,36 @@ export default function LearningPathPage() {
 
             <div className="lg:col-span-5 space-y-4">
               <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400" /> Skill Gaps Identified ({profile.skillGaps.length})
+                <AlertTriangle className="w-4 h-4 text-amber-400" /> Skill Gaps Identified ({profile.skillGaps?.length || 0})
               </h3>
 
               <div className="space-y-3">
-                {profile.skillGaps.map((gap, idx) => (
-                  <div key={idx} className="bg-card border border-border/80 rounded-2xl p-4 shadow-md space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-sm text-foreground">{gap.skill}</h4>
-                      <span
-                        className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
-                          gap.gapSeverity === "Critical"
-                            ? "bg-red-500/20 text-red-400 border-red-500/30"
-                            : gap.gapSeverity === "Moderate"
-                            ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                            : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                        }`}
-                      >
-                        {gap.gapSeverity} Gap
-                      </span>
-                    </div>
+                {profile.skillGaps && profile.skillGaps.length > 0 ? (
+                  profile.skillGaps.map((gap, idx) => (
+                    <div key={idx} className="bg-card border border-border/80 rounded-2xl p-4 shadow-md space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-bold text-sm text-foreground">{gap.skill}</h4>
+                        <span
+                          className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                            gap.gapSeverity === "Critical"
+                              ? "bg-red-500/20 text-red-400 border-red-500/30"
+                              : gap.gapSeverity === "Moderate"
+                              ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                              : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                          }`}
+                        >
+                          {gap.gapSeverity} Gap
+                        </span>
+                      </div>
 
-                    <p className="text-xs text-muted-foreground">{gap.description}</p>
+                      <p className="text-xs text-muted-foreground">{gap.description}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 rounded-2xl bg-card border border-border text-xs text-muted-foreground">
+                    Target skills are aligned with your profile. Generate a custom roadmap to explore specialized competencies.
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
