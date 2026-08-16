@@ -183,8 +183,8 @@ export default function ProfilePage() {
               <Zap className="w-3.5 h-3.5" /> Learner Profile & AI Targeting Engine
             </span>
             {isPro ? (
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                <Crown className="w-3.5 h-3.5 text-amber-300" /> PRO Learner
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-mono font-black bg-amber-400 text-slate-950 border border-amber-500 shadow-sm">
+                <Crown className="w-3.5 h-3.5 text-slate-950 fill-slate-950" /> PRO Learner
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono font-bold bg-secondary text-muted-foreground border border-border">
@@ -197,9 +197,9 @@ export default function ProfilePage() {
             {!isPro && (
               <button
                 onClick={() => setIsUpgradeOpen(true)}
-                className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl transition shadow-md cursor-pointer"
+                className="inline-flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black px-4 py-2 rounded-xl transition shadow-md border border-amber-500 cursor-pointer"
               >
-                <Crown className="w-3.5 h-3.5" /> Upgrade to PRO
+                <Crown className="w-3.5 h-3.5 text-slate-950 fill-slate-950" /> Upgrade to PRO
               </button>
             )}
 

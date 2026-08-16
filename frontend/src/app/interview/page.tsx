@@ -24,7 +24,8 @@ import {
   Target,
 } from "lucide-react";
 
-const FREE_INTERVIEW_LIMIT = 3;
+// Normal version allows ONLY 1 free mock interview
+const FREE_INTERVIEW_LIMIT = 1;
 
 const INTERVIEW_ROLES = [
   "Full Stack Engineer",
@@ -176,7 +177,7 @@ export default function InterviewPage() {
                 Mock Technical Interview Simulator
                 {!isPro ? (
                   <span className="text-xs font-mono font-bold bg-secondary text-muted-foreground border border-border px-3.5 py-1 rounded-full">
-                    FREE TIER
+                    FREE TIER (1 Mock Free)
                   </span>
                 ) : (
                   <span className="text-xs font-mono font-black bg-amber-400 text-slate-950 border border-amber-500 px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-md">
@@ -193,9 +194,9 @@ export default function InterviewPage() {
               {!isPro && (
                 <button
                   onClick={() => setIsUpgradeOpen(true)}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg transition duration-300 cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg transition duration-300 cursor-pointer border border-amber-500"
                 >
-                  <Crown className="w-4 h-4 text-slate-950" /> Unlock PRO Unlimited Questions
+                  <Crown className="w-4 h-4 text-slate-950 fill-slate-950" /> Upgrade for Unlimited Mock Interviews
                 </button>
               )}
             </div>
@@ -208,12 +209,19 @@ export default function InterviewPage() {
             <div className="flex items-center gap-3 text-xs sm:text-sm">
               <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>
-                Free Tier Usage: <b suppressHydrationWarning>{mounted ? interviewCount : 0}</b> / <b>{FREE_INTERVIEW_LIMIT}</b> mock interviews completed
+                Free Version Limit: <b suppressHydrationWarning>{mounted ? interviewCount : 0}</b> / <b>{FREE_INTERVIEW_LIMIT}</b> mock interview completed
               </span>
             </div>
-            {isLimitReached && (
-              <span className="text-xs font-mono text-red-400 font-bold bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
-                Free limit reached (3/3)!
+            {isLimitReached ? (
+              <button
+                onClick={() => setIsUpgradeOpen(true)}
+                className="text-xs font-mono text-amber-950 font-black bg-amber-400 px-4 py-1.5 rounded-full border border-amber-500 hover:bg-amber-300 transition cursor-pointer shadow-sm flex items-center gap-1"
+              >
+                <Crown className="w-3.5 h-3.5 fill-slate-950" /> Upgrade to PRO (1/1 Limit Reached)
+              </button>
+            ) : (
+              <span className="text-xs font-mono text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                1 Free Interview Active
               </span>
             )}
           </div>
@@ -282,7 +290,13 @@ export default function InterviewPage() {
 
           <button
             type="submit"
-            disabled={evaluating || !answer.trim() || isLimitReached}
+            disabled={evaluating || !answer.trim()}
+            onClick={(e) => {
+              if (isLimitReached) {
+                e.preventDefault();
+                setIsUpgradeOpen(true);
+              }
+            }}
             className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:opacity-50 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/30 cursor-pointer"
           >
             {evaluating ? (
@@ -291,7 +305,7 @@ export default function InterviewPage() {
               </>
             ) : isLimitReached ? (
               <>
-                <Lock className="w-4 h-4" /> Limit Reached (3/3) — Upgrade to PRO for Unlimited Interviews
+                <Lock className="w-4 h-4" /> Free Limit Reached (1/1) — Upgrade to PRO to Continue
               </>
             ) : (
               <>
