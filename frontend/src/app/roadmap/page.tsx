@@ -36,9 +36,9 @@ import {
   saveStoredProfile,
   loadStoredLearningPath,
   saveStoredLearningPath,
-  FALLBACK_COURSES,
-  FALLBACK_PROJECTS,
-  FALLBACK_RESOURCES,
+  getRoleTailoredRecommendations,
+  getRoleTargetSkills,
+  calculateSkillGaps,
 } from "@/lib/learningPathEngine";
 import SkillRadarChart from "@/components/learning/SkillRadarChart";
 import RecommendationExplainerModal from "@/components/learning/RecommendationExplainerModal";
@@ -46,6 +46,7 @@ import PathAdaptModal from "@/components/learning/PathAdaptModal";
 import QuizModal from "@/components/learning/QuizModal";
 
 export default function LearningPathPage() {
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"path" | "recommendations" | "skillgaps" | "assistant">("path");
   const [profile, setProfile] = useState<LearnerProfile>(() => loadStoredProfile());
   const [learningPath, setLearningPath] = useState<StructuredLearningPath | null>(() => loadStoredLearningPath());
@@ -53,10 +54,12 @@ export default function LearningPathPage() {
   const [promptInput, setPromptInput] = useState("");
   const [activeStep, setActiveStep] = useState<number>(1);
 
-  // Recommendations state
-  const [courses, setCourses] = useState<CourseRecommendation[]>(FALLBACK_COURSES);
-  const [projects, setProjects] = useState<ProjectRecommendation[]>(FALLBACK_PROJECTS);
-  const [resources, setResources] = useState<ResourceRecommendation[]>(FALLBACK_RESOURCES);
+  // Initial recommendation fallback matching target goal
+  const initialRecs = useMemo(() => getRoleTailoredRecommendations(profile.targetGoal || "Software Engineer"), [profile.targetGoal]);
+
+  const [courses, setCourses] = useState<CourseRecommendation[]>(initialRecs.courses);
+  const [projects, setProjects] = useState<ProjectRecommendation[]>(initialRecs.projects);
+  const [resources, setResources] = useState<ResourceRecommendation[]>(initialRecs.resources);
 
   // Modals state
   const [explainerModalItem, setExplainerModalItem] = useState<any | null>(null);
@@ -73,6 +76,11 @@ export default function LearningPathPage() {
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+
+  // Ensure client mounting before rendering client-side storage stats to prevent React hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Safe API helper that never throws JSON parse syntax errors
   const safeFetchJson = async (url: string, body: any) => {
@@ -106,10 +114,15 @@ export default function LearningPathPage() {
 
   const handleFetchRecommendations = useCallback(async (prof: LearnerProfile) => {
     const data = await safeFetchJson("/api/learning-path/recommend", { profile: prof });
-    if (data) {
-      if (data.courses && Array.isArray(data.courses)) setCourses(data.courses);
-      if (data.projects && Array.isArray(data.projects)) setProjects(data.projects);
-      if (data.resources && Array.isArray(data.resources)) setResources(data.resources);
+    if (data && data.courses && Array.isArray(data.courses) && data.courses.length > 0) {
+      setCourses(data.courses);
+      if (data.projects) setProjects(data.projects);
+      if (data.resources) setResources(data.resources);
+    } else {
+      const fallback = getRoleTailoredRecommendations(prof.targetGoal);
+      setCourses(fallback.courses);
+      setProjects(fallback.projects);
+      setResources(fallback.resources);
     }
   }, []);
 
@@ -137,24 +150,44 @@ export default function LearningPathPage() {
         currentProfile: profile,
       });
 
-      if (data && data.extractedProfileUpdates) {
-        const updated: LearnerProfile = {
-          ...profile,
-          targetGoal: data.extractedProfileUpdates.targetGoal || profile.targetGoal,
-          preferences: {
-            ...profile.preferences,
-            ...(data.extractedProfileUpdates.preferences || {}),
-          },
-        };
-        setProfile(updated);
-        saveStoredProfile(updated);
-
-        await handleGenerateInitialPath(updated);
-        await handleFetchRecommendations(updated);
+      let updatedTargetRole = profile.targetGoal;
+      if (data && data.extractedProfileUpdates && data.extractedProfileUpdates.targetGoal) {
+        updatedTargetRole = data.extractedProfileUpdates.targetGoal;
+      } else if (query.toLowerCase().includes("software engineer") || query.toLowerCase().includes("sde")) {
+        updatedTargetRole = "Software Engineer";
+      } else if (query.toLowerCase().includes("frontend")) {
+        updatedTargetRole = "Frontend Engineer";
+      } else if (query.toLowerCase().includes("data")) {
+        updatedTargetRole = "Data Scientist";
+      } else if (query.toLowerCase().includes("ai") || query.toLowerCase().includes("machine learning")) {
+        updatedTargetRole = "AI Engineer";
       } else {
-        // Fallback update if API didn't return updates
-        await handleGenerateInitialPath(profile);
+        updatedTargetRole = query.trim();
       }
+
+      const newTargetSkills = getRoleTargetSkills(updatedTargetRole);
+      const updatedProfile: LearnerProfile = {
+        ...profile,
+        targetGoal: updatedTargetRole,
+        targetSkills: newTargetSkills,
+        preferences: {
+          ...profile.preferences,
+          ...(data?.extractedProfileUpdates?.preferences || {}),
+        },
+      };
+
+      updatedProfile.skillGaps = calculateSkillGaps(updatedProfile);
+      setProfile(updatedProfile);
+      saveStoredProfile(updatedProfile);
+
+      // Instantly load role-tailored recommendations & trigger path generation
+      const roleRecs = getRoleTailoredRecommendations(updatedTargetRole);
+      setCourses(roleRecs.courses);
+      setProjects(roleRecs.projects);
+      setResources(roleRecs.resources);
+
+      await handleGenerateInitialPath(updatedProfile);
+      await handleFetchRecommendations(updatedProfile);
 
       setGenerating(false);
       setPromptInput("");
@@ -203,20 +236,20 @@ export default function LearningPathPage() {
     } else {
       setChatMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "I've processed your query and tailored your recommendations." },
+        { role: "assistant", content: `I've analyzed your request for ${profile.targetGoal} and tailored your recommendations!` },
       ]);
     }
     setChatLoading(false);
   }, [chatInput, chatLoading, profile]);
 
   const completedPhases = useMemo(
-    () => learningPath?.phases.filter((p) => p.status === "completed").length || 0,
+    () => (learningPath?.phases || []).filter((p) => p.status === "completed").length,
     [learningPath]
   );
-  const totalPhases = useMemo(() => learningPath?.phases.length || 4, [learningPath]);
+  const totalPhases = useMemo(() => learningPath?.phases?.length || 4, [learningPath]);
   const progressPercent = useMemo(
-    () => Math.round((completedPhases / totalPhases) * 100),
-    [completedPhases, totalPhases]
+    () => (mounted ? Math.round((completedPhases / totalPhases) * 100) : 0),
+    [completedPhases, totalPhases, mounted]
   );
 
   return (
@@ -242,7 +275,9 @@ export default function LearningPathPage() {
               <Trophy className="w-5 h-5 text-emerald-400" />
               <div>
                 <div className="text-[10px] text-muted-foreground font-mono uppercase">Path Mastery</div>
-                <div className="text-base font-bold text-foreground">{progressPercent}% Completed</div>
+                <div className="text-base font-bold text-foreground" suppressHydrationWarning>
+                  {mounted ? `${progressPercent}% Completed` : "0% Completed"}
+                </div>
               </div>
             </div>
             <div className="h-8 w-px bg-border" />
@@ -262,7 +297,7 @@ export default function LearningPathPage() {
               <Sparkles className="w-4 h-4 text-emerald-400" /> Target Goal Description
             </span>
             <span className="text-[11px] text-muted-foreground font-normal">
-              e.g. "Become a Senior AI Engineer specializing in LLMs within 6 months"
+              e.g. "Software Engineer", "Frontend Engineer", "Data Scientist", or "AI Engineer"
             </span>
           </label>
 
@@ -548,7 +583,7 @@ export default function LearningPathPage() {
                       </button>
 
                       <a
-                        href={course.url || "#"}
+                        href={course.url || "https://www.coursera.org"}
                         target="_blank"
                         rel="noreferrer"
                         className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer"
@@ -615,7 +650,7 @@ export default function LearningPathPage() {
               <div>
                 <h3 className="font-heading font-bold text-lg text-foreground">Skill Competency Radar Matrix</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Visualizing your current proficiency levels vs target role requirements.
+                  Visualizing your current proficiency levels vs target role requirements for {profile.targetGoal}.
                 </p>
               </div>
 
@@ -624,36 +659,30 @@ export default function LearningPathPage() {
 
             <div className="lg:col-span-5 space-y-4">
               <h3 className="font-mono text-xs uppercase tracking-wider text-muted-foreground font-bold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400" /> Skill Gaps Identified ({profile.skillGaps?.length || 0})
+                <AlertTriangle className="w-4 h-4 text-amber-400" /> Skill Gaps Identified ({calculateSkillGaps(profile).length})
               </h3>
 
               <div className="space-y-3">
-                {profile.skillGaps && profile.skillGaps.length > 0 ? (
-                  profile.skillGaps.map((gap, idx) => (
-                    <div key={idx} className="bg-card border border-border/80 rounded-2xl p-4 shadow-md space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-sm text-foreground">{gap.skill}</h4>
-                        <span
-                          className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
-                            gap.gapSeverity === "Critical"
-                              ? "bg-red-500/20 text-red-400 border-red-500/30"
-                              : gap.gapSeverity === "Moderate"
-                              ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                              : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                          }`}
-                        >
-                          {gap.gapSeverity} Gap
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-muted-foreground">{gap.description}</p>
+                {calculateSkillGaps(profile).map((gap, idx) => (
+                  <div key={idx} className="bg-card border border-border/80 rounded-2xl p-4 shadow-md space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-sm text-foreground">{gap.skill}</h4>
+                      <span
+                        className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                          gap.gapSeverity === "Critical"
+                            ? "bg-red-500/20 text-red-400 border-red-500/30"
+                            : gap.gapSeverity === "Moderate"
+                            ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                            : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                        }`}
+                      >
+                        {gap.gapSeverity} Gap
+                      </span>
                     </div>
-                  ))
-                ) : (
-                  <div className="p-4 rounded-2xl bg-card border border-border text-xs text-muted-foreground">
-                    Target skills are aligned with your profile. Generate a custom roadmap to explore specialized competencies.
+
+                    <p className="text-xs text-muted-foreground">{gap.description}</p>
                   </div>
-                )}
+                ))}
               </div>
             </div>
           </div>
