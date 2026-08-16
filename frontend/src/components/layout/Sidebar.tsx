@@ -40,8 +40,14 @@ const ACCOUNT_NAV = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const isDemo = searchParams?.get("demo") === "true";
+  const [isDemo, setIsDemo] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      setIsDemo(params.get("demo") === "true");
+    }
+  }, []);
 
   const getHref = (baseHref: string) => (isDemo ? `${baseHref}?demo=true` : baseHref);
 
