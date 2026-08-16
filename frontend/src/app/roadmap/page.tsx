@@ -48,18 +48,24 @@ import QuizModal from "@/components/learning/QuizModal";
 export default function LearningPathPage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"path" | "recommendations" | "skillgaps" | "assistant">("path");
+
+  // Lazy state initializers (read localStorage / role recommendations once)
   const [profile, setProfile] = useState<LearnerProfile>(() => loadStoredProfile());
   const [learningPath, setLearningPath] = useState<StructuredLearningPath | null>(() => loadStoredLearningPath());
   const [generating, setGenerating] = useState(false);
   const [promptInput, setPromptInput] = useState("");
   const [activeStep, setActiveStep] = useState<number>(1);
 
-  // Initial recommendation fallback matching target goal
-  const initialRecs = useMemo(() => getRoleTailoredRecommendations(profile.targetGoal || "Software Engineer"), [profile.targetGoal]);
-
-  const [courses, setCourses] = useState<CourseRecommendation[]>(initialRecs.courses);
-  const [projects, setProjects] = useState<ProjectRecommendation[]>(initialRecs.projects);
-  const [resources, setResources] = useState<ResourceRecommendation[]>(initialRecs.resources);
+  // Recommendations state initialized directly from profile target role
+  const [courses, setCourses] = useState<CourseRecommendation[]>(() =>
+    getRoleTailoredRecommendations(loadStoredProfile().targetGoal || "Software Engineer").courses
+  );
+  const [projects, setProjects] = useState<ProjectRecommendation[]>(() =>
+    getRoleTailoredRecommendations(loadStoredProfile().targetGoal || "Software Engineer").projects
+  );
+  const [resources, setResources] = useState<ResourceRecommendation[]>(() =>
+    getRoleTailoredRecommendations(loadStoredProfile().targetGoal || "Software Engineer").resources
+  );
 
   // Modals state
   const [explainerModalItem, setExplainerModalItem] = useState<any | null>(null);
@@ -77,12 +83,12 @@ export default function LearningPathPage() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
 
-  // Ensure client mounting before rendering client-side storage stats to prevent React hydration mismatch
+  // Mount flag to prevent React hydration mismatch between SSR and Client
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Safe API helper that never throws JSON parse syntax errors
+  // Safe API helper that never throws JSON syntax errors or breaks React state
   const safeFetchJson = async (url: string, body: any) => {
     try {
       const res = await fetch(url, {
@@ -102,58 +108,31 @@ export default function LearningPathPage() {
     }
   };
 
-  const handleGenerateInitialPath = useCallback(async (prof: LearnerProfile) => {
-    setGenerating(true);
-    const data = await safeFetchJson("/api/learning-path/generate", { profile: prof });
-    if (data && data.path) {
-      setLearningPath(data.path);
-      saveStoredLearningPath(data.path);
-    }
-    setGenerating(false);
-  }, []);
-
-  const handleFetchRecommendations = useCallback(async (prof: LearnerProfile) => {
-    const data = await safeFetchJson("/api/learning-path/recommend", { profile: prof });
-    if (data && data.courses && Array.isArray(data.courses) && data.courses.length > 0) {
-      setCourses(data.courses);
-      if (data.projects) setProjects(data.projects);
-      if (data.resources) setResources(data.resources);
-    } else {
-      const fallback = getRoleTailoredRecommendations(prof.targetGoal);
-      setCourses(fallback.courses);
-      setProjects(fallback.projects);
-      setResources(fallback.resources);
-    }
-  }, []);
-
-  // Run initial load ONCE on mount
+  // Run initial path generation ONLY ONCE if no stored path exists
   useEffect(() => {
-    const p = loadStoredProfile();
-    setProfile(p);
-    const path = loadStoredLearningPath();
-    if (path) {
-      setLearningPath(path);
-    } else {
-      handleGenerateInitialPath(p);
+    const currentStoredPath = loadStoredLearningPath();
+    if (!currentStoredPath) {
+      const currentProf = loadStoredProfile();
+      safeFetchJson("/api/learning-path/generate", { profile: currentProf }).then((data) => {
+        if (data && data.path) {
+          setLearningPath(data.path);
+          saveStoredLearningPath(data.path);
+        }
+      });
     }
-    handleFetchRecommendations(p);
-  }, [handleGenerateInitialPath, handleFetchRecommendations]);
+  }, []); // Strictly empty dependency array — executes ONCE on mount
 
+  // Explicit user trigger for generating path from prompt / role search
   const handleNaturalLanguageConverse = useCallback(
     async (text?: string) => {
       const query = text || promptInput;
       if (!query.trim() || generating) return;
 
       setGenerating(true);
-      const data = await safeFetchJson("/api/learning-path/converse", {
-        userPrompt: query,
-        currentProfile: profile,
-      });
 
+      // Infer role from query
       let updatedTargetRole = profile.targetGoal;
-      if (data && data.extractedProfileUpdates && data.extractedProfileUpdates.targetGoal) {
-        updatedTargetRole = data.extractedProfileUpdates.targetGoal;
-      } else if (query.toLowerCase().includes("software engineer") || query.toLowerCase().includes("sde")) {
+      if (query.toLowerCase().includes("software engineer") || query.toLowerCase().includes("sde")) {
         updatedTargetRole = "Software Engineer";
       } else if (query.toLowerCase().includes("frontend")) {
         updatedTargetRole = "Frontend Engineer";
@@ -161,38 +140,40 @@ export default function LearningPathPage() {
         updatedTargetRole = "Data Scientist";
       } else if (query.toLowerCase().includes("ai") || query.toLowerCase().includes("machine learning")) {
         updatedTargetRole = "AI Engineer";
+      } else if (query.toLowerCase().includes("devops") || query.toLowerCase().includes("cloud")) {
+        updatedTargetRole = "DevOps Architect";
       } else {
         updatedTargetRole = query.trim();
       }
+
+      // Update role-tailored recommendations immediately
+      const roleRecs = getRoleTailoredRecommendations(updatedTargetRole);
+      setCourses(roleRecs.courses);
+      setProjects(roleRecs.projects);
+      setResources(roleRecs.resources);
 
       const newTargetSkills = getRoleTargetSkills(updatedTargetRole);
       const updatedProfile: LearnerProfile = {
         ...profile,
         targetGoal: updatedTargetRole,
         targetSkills: newTargetSkills,
-        preferences: {
-          ...profile.preferences,
-          ...(data?.extractedProfileUpdates?.preferences || {}),
-        },
       };
 
       updatedProfile.skillGaps = calculateSkillGaps(updatedProfile);
       setProfile(updatedProfile);
       saveStoredProfile(updatedProfile);
 
-      // Instantly load role-tailored recommendations & trigger path generation
-      const roleRecs = getRoleTailoredRecommendations(updatedTargetRole);
-      setCourses(roleRecs.courses);
-      setProjects(roleRecs.projects);
-      setResources(roleRecs.resources);
-
-      await handleGenerateInitialPath(updatedProfile);
-      await handleFetchRecommendations(updatedProfile);
+      // Call generate API
+      const data = await safeFetchJson("/api/learning-path/generate", { profile: updatedProfile });
+      if (data && data.path) {
+        setLearningPath(data.path);
+        saveStoredLearningPath(data.path);
+      }
 
       setGenerating(false);
       setPromptInput("");
     },
-    [promptInput, generating, profile, handleGenerateInitialPath, handleFetchRecommendations]
+    [promptInput, generating, profile]
   );
 
   const togglePhaseStatus = useCallback(
