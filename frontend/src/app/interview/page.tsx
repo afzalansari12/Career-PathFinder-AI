@@ -24,6 +24,8 @@ import {
   Target,
 } from "lucide-react";
 
+const FREE_INTERVIEW_LIMIT = 3;
+
 const INTERVIEW_ROLES = [
   "Full Stack Engineer",
   "Software Engineer",
@@ -50,6 +52,7 @@ const DEFAULT_QUESTIONS: Record<string, string> = {
 
 export default function InterviewPage() {
   const { user } = useUser();
+  const [mounted, setMounted] = useState(false);
   const [role, setRole] = useState(INTERVIEW_ROLES[0]);
   const [question, setQuestion] = useState(DEFAULT_QUESTIONS[INTERVIEW_ROLES[0]]);
   const [answer, setAnswer] = useState("");
@@ -60,18 +63,26 @@ export default function InterviewPage() {
     feedback: string;
   } | null>(null);
   const [isPro, setIsPro] = useState(false);
+  const [interviewCount, setInterviewCount] = useState(0);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
   const userId = user?.id || user?.primaryEmailAddress?.emailAddress;
 
   const checkProStatus = () => {
     setIsPro(getProStatus(userId));
+    if (typeof window !== "undefined") {
+      const userCountKey = userId ? `interview_count_${userId}` : "interview_count";
+      const count = parseInt(localStorage.getItem(userCountKey) || "0", 10);
+      setInterviewCount(count);
+    }
   };
 
   useEffect(() => {
+    setMounted(true);
     checkProStatus();
-    window.addEventListener("pro_status_updated", checkProStatus);
-    return () => window.removeEventListener("pro_status_updated", checkProStatus);
+    const handleProUpdate = () => checkProStatus();
+    window.addEventListener("pro_status_updated", handleProUpdate);
+    return () => window.removeEventListener("pro_status_updated", handleProUpdate);
   }, [userId]);
 
   const handleRoleChange = (newRole: string) => {
@@ -104,9 +115,16 @@ export default function InterviewPage() {
     }
   };
 
+  const isLimitReached = !isPro && interviewCount >= FREE_INTERVIEW_LIMIT;
+
   const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!answer.trim() || evaluating) return;
+
+    if (isLimitReached) {
+      setIsUpgradeOpen(true);
+      return;
+    }
 
     setEvaluating(true);
     try {
@@ -122,6 +140,11 @@ export default function InterviewPage() {
           score: typeof data.score === "number" ? data.score : 15,
           feedback: data.feedback || "Solid response demonstrating core technical principles and clear problem-solving rationale.",
         });
+
+        const nextCount = interviewCount + 1;
+        setInterviewCount(nextCount);
+        const userCountKey = userId ? `interview_count_${userId}` : "interview_count";
+        localStorage.setItem(userCountKey, nextCount.toString());
       }
     } catch (err) {
       console.error("Evaluation error:", err);
@@ -151,9 +174,13 @@ export default function InterviewPage() {
               </div>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-extrabold tracking-tight text-foreground flex items-center gap-3">
                 Mock Technical Interview Simulator
-                {isPro && (
-                  <span className="text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-full flex items-center gap-1">
-                    <Crown className="w-3.5 h-3.5 text-amber-300" /> PRO UNLOCKED
+                {!isPro ? (
+                  <span className="text-xs font-mono font-bold bg-secondary text-muted-foreground border border-border px-3.5 py-1 rounded-full">
+                    FREE TIER
+                  </span>
+                ) : (
+                  <span className="text-xs font-mono font-black bg-amber-400 text-slate-950 border border-amber-500 px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+                    <Crown className="w-4 h-4 text-slate-950 fill-slate-950" /> PRO UNLOCKED
                   </span>
                 )}
               </h1>
@@ -166,14 +193,31 @@ export default function InterviewPage() {
               {!isPro && (
                 <button
                   onClick={() => setIsUpgradeOpen(true)}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg transition duration-300 cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg transition duration-300 cursor-pointer"
                 >
-                  <Crown className="w-4 h-4" /> Unlock PRO Unlimited Questions
+                  <Crown className="w-4 h-4 text-slate-950" /> Unlock PRO Unlimited Questions
                 </button>
               )}
             </div>
           </div>
         </div>
+
+        {/* Free Tier Usage Counter Card */}
+        {!isPro && (
+          <div className="p-4 rounded-2xl bg-card border border-border/80 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
+            <div className="flex items-center gap-3 text-xs sm:text-sm">
+              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>
+                Free Tier Usage: <b suppressHydrationWarning>{mounted ? interviewCount : 0}</b> / <b>{FREE_INTERVIEW_LIMIT}</b> mock interviews completed
+              </span>
+            </div>
+            {isLimitReached && (
+              <span className="text-xs font-mono text-red-400 font-bold bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
+                Free limit reached (3/3)!
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Interactive Role Selection Pills */}
         <div className="space-y-3">
@@ -200,28 +244,29 @@ export default function InterviewPage() {
           </div>
         </div>
 
-        {/* Question Card */}
-        <div className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-4">
+        {/* Technical Question Card */}
+        <div className="bg-card border border-border/80 rounded-3xl p-6 sm:p-8 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-bold uppercase px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="text-xs font-mono font-bold uppercase text-emerald-400 tracking-wider bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
               {role} Interview Question
             </span>
             <button
+              type="button"
               onClick={handleFetchNextQuestion}
               disabled={fetchingQuestion}
-              className="text-xs font-mono text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition cursor-pointer"
+              className="text-xs font-mono text-muted-foreground hover:text-emerald-400 transition flex items-center gap-1.5 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${fetchingQuestion ? "animate-spin text-emerald-400" : ""}`} />
               Next Question
             </button>
           </div>
 
-          <h2 className="text-lg sm:text-xl font-heading font-bold text-foreground leading-relaxed">
+          <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-foreground leading-relaxed">
             {question}
           </h2>
         </div>
 
-        {/* Answer Form */}
+        {/* Candidate Answer Form */}
         <form onSubmit={handleSubmitAnswer} className="bg-card border border-border/80 rounded-3xl p-6 shadow-xl space-y-4">
           <label className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Code2 className="w-4 h-4 text-blue-400" /> Type Your Explanation & Architecture Strategy
@@ -232,35 +277,49 @@ export default function InterviewPage() {
             onChange={(e) => setAnswer(e.target.value)}
             rows={6}
             placeholder="Explain your technical strategy step-by-step, including data structures, algorithmic complexity, trade-offs, and edge cases..."
-            className="w-full bg-background border border-border/80 rounded-2xl p-4 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition leading-relaxed"
+            className="w-full bg-background border border-border/80 rounded-2xl p-4 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition leading-relaxed font-mono"
           />
 
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={evaluating || !answer.trim()}
-              className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:opacity-50 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-2xl shadow-lg shadow-emerald-950/20 transition flex items-center gap-2 cursor-pointer"
-            >
-              {evaluating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {evaluating ? "Evaluating Strategy..." : "Submit Answer for AI Evaluation"}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={evaluating || !answer.trim() || isLimitReached}
+            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:opacity-50 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/30 cursor-pointer"
+          >
+            {evaluating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Evaluating Answer Relevance & Technical Accuracy...
+              </>
+            ) : isLimitReached ? (
+              <>
+                <Lock className="w-4 h-4" /> Limit Reached (3/3) — Upgrade to PRO for Unlimited Interviews
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" /> Submit Answer for AI Evaluation
+              </>
+            )}
+          </button>
         </form>
 
         {/* AI Evaluation Results */}
         {evaluation && (
-          <div className="bg-card border border-emerald-500/40 rounded-3xl p-6 shadow-2xl space-y-4 bg-gradient-to-br from-card via-card to-emerald-950/20">
+          <div className="bg-card border border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4 bg-gradient-to-br from-card via-card to-emerald-950/20">
             <div className="flex items-center justify-between border-b border-border pb-4">
-              <div className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-heading font-bold text-lg text-foreground">AI Technical Evaluation Score</h3>
-              </div>
-              <div className="text-3xl font-extrabold font-mono text-emerald-400">{evaluation.score} / 100</div>
+              <span className="text-xs font-mono font-bold uppercase text-emerald-400 tracking-wider flex items-center gap-2">
+                <Award className="w-4 h-4" /> AI Technical Evaluation Score
+              </span>
+              <span className="text-3xl font-extrabold font-mono text-emerald-400">
+                {evaluation.score} / 100
+              </span>
             </div>
 
-            <div className="text-xs sm:text-sm text-foreground/90 leading-relaxed bg-muted/20 p-4 rounded-2xl border border-border/60">
-              <b className="text-emerald-400 block mb-1">Recruiter & AI Feedback:</b>
-              {evaluation.feedback}
+            <div className="space-y-2">
+              <span className="text-xs font-mono font-bold text-muted-foreground uppercase block">
+                Recruiter & AI Feedback:
+              </span>
+              <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed bg-secondary/40 p-4 rounded-2xl border border-border/60">
+                {evaluation.feedback}
+              </p>
             </div>
           </div>
         )}

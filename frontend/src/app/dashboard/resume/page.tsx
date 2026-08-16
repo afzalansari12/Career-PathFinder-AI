@@ -29,7 +29,7 @@ import {
   Download,
 } from "lucide-react";
 
-const FREE_AUDIT_LIMIT = 3;
+const FREE_AUDIT_LIMIT = 5;
 
 export default function ResumePage() {
   const { user } = useUser();
