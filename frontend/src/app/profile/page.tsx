@@ -27,9 +27,20 @@ import {
   Trash2,
   BarChart3,
   BrainCircuit,
+  Search,
 } from "lucide-react";
 import { LearnerProfile, ExperienceLevel, LearningPace, LearningStyle, CompletedCourse } from "@/types/learningPath";
 import { DEFAULT_PROFILE, loadStoredProfile, saveStoredProfile, calculateSkillGaps } from "@/lib/learningPathEngine";
+
+const POPULAR_PRESET_COURSES = [
+  { title: "Next.js 16 & React 19 Full-Stack Architecture", platform: "Vercel Academy" },
+  { title: "Data Structures and Algorithms Specialization", platform: "Coursera" },
+  { title: "System Design for High-Scalability Applications", platform: "ByteByteGo" },
+  { title: "Deep Learning Specialization (PyTorch)", platform: "DeepLearning.AI" },
+  { title: "PostgreSQL High Performance & Query Tuning", platform: "Udemy" },
+  { title: "Complete Web Development Bootcamp", platform: "Udemy" },
+  { title: "AWS Certified Solutions Architect", platform: "AWS Training" },
+];
 
 export default function ProfilePage() {
   const { user } = useUser();
@@ -63,7 +74,8 @@ export default function ProfilePage() {
     if (user?.primaryEmailAddress?.emailAddress) setEmail(user.primaryEmailAddress.emailAddress);
   }, [user]);
 
-  // New course input state
+  // Course logger state
+  const [selectedDropdownCourse, setSelectedDropdownCourse] = useState("");
   const [newCourseTitle, setNewCourseTitle] = useState("");
   const [newCoursePlatform, setNewCoursePlatform] = useState("Udemy");
 
@@ -80,23 +92,39 @@ export default function ProfilePage() {
     setTimeout(() => setIsSaved(false), 3000);
   };
 
+  const handleSelectDropdownCourse = (title: string) => {
+    setSelectedDropdownCourse(title);
+    if (title) {
+      setNewCourseTitle(title);
+      const found = POPULAR_PRESET_COURSES.find((c) => c.title === title);
+      if (found) {
+        setNewCoursePlatform(found.platform);
+      }
+    }
+  };
+
   const handleAddCourse = () => {
-    if (!newCourseTitle.trim()) return;
+    const titleToAdd = (newCourseTitle || selectedDropdownCourse).trim();
+    if (!titleToAdd) return;
+
     const course: CompletedCourse = {
       id: `course-${Date.now()}`,
-      title: newCourseTitle.trim(),
+      title: titleToAdd,
       platform: newCoursePlatform,
       dateCompleted: new Date().toISOString().split("T")[0],
       rating: 5,
       keySkillsLearned: ["Software Architecture", "Core Competencies"],
     };
+
     const updated: LearnerProfile = {
       ...profile,
       completedCourses: [course, ...(profile.completedCourses || [])],
     };
+
     setProfile(updated);
     saveStoredProfile(updated);
     setNewCourseTitle("");
+    setSelectedDropdownCourse("");
   };
 
   const handleRemoveCourse = (id: string) => {
@@ -232,7 +260,7 @@ export default function ProfilePage() {
             {/* Personal Details Form */}
             <div className="space-y-4 text-xs">
               <div>
-                <label className="text-muted-foreground font-mono uppercase block mb-1">Full Name</label>
+                <label className="text-muted-foreground font-mono uppercase block mb-1 font-bold">Full Name</label>
                 <input
                   type="text"
                   value={fullName}
@@ -242,7 +270,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="text-muted-foreground font-mono uppercase block mb-1">Location</label>
+                <label className="text-muted-foreground font-mono uppercase block mb-1 font-bold">Location</label>
                 <input
                   type="text"
                   value={location}
@@ -413,44 +441,69 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Add Course Form */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="text"
-                  placeholder="Course Title (e.g. Next.js Full Stack Architecture)"
-                  value={newCourseTitle}
-                  onChange={(e) => setNewCourseTitle(e.target.value)}
-                  className="flex-1 bg-background border border-border rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none"
-                />
-                <select
-                  value={newCoursePlatform}
-                  onChange={(e) => setNewCoursePlatform(e.target.value)}
-                  className="bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground"
-                >
-                  <option value="Udemy">Udemy</option>
-                  <option value="Coursera">Coursera</option>
-                  <option value="edX">edX</option>
-                  <option value="Vercel Academy">Vercel Academy</option>
-                </select>
-                <button
-                  onClick={handleAddCourse}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer shrink-0"
-                >
-                  <Plus className="w-4 h-4" /> Add Course
-                </button>
+              {/* Add Course Form with Dual Input (Dropdown + Search/Type) */}
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-mono uppercase text-muted-foreground font-bold">
+                    Select Popular Course or Type Custom Title
+                  </label>
+                  <select
+                    value={selectedDropdownCourse}
+                    onChange={(e) => handleSelectDropdownCourse(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground focus:outline-none font-medium"
+                  >
+                    <option value="">-- Choose from Popular Preset Courses --</option>
+                    {POPULAR_PRESET_COURSES.map((preset, idx) => (
+                      <option key={idx} value={preset.title}>
+                        {preset.title} ({preset.platform})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="text"
+                    placeholder="Search or type custom course title (e.g. Next.js Full Stack Architecture)"
+                    value={newCourseTitle}
+                    onChange={(e) => setNewCourseTitle(e.target.value)}
+                    className="flex-1 bg-background border border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground focus:outline-none"
+                  />
+                  <select
+                    value={newCoursePlatform}
+                    onChange={(e) => setNewCoursePlatform(e.target.value)}
+                    className="bg-background border border-border rounded-xl px-3 py-2.5 text-xs text-foreground font-semibold"
+                  >
+                    <option value="Udemy">Udemy</option>
+                    <option value="Coursera">Coursera</option>
+                    <option value="edX">edX</option>
+                    <option value="Vercel Academy">Vercel Academy</option>
+                    <option value="ByteByteGo">ByteByteGo</option>
+                    <option value="DeepLearning.AI">DeepLearning.AI</option>
+                    <option value="AWS Training">AWS Training</option>
+                  </select>
+                  <button
+                    onClick={handleAddCourse}
+                    disabled={!newCourseTitle.trim() && !selectedDropdownCourse.trim()}
+                    className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer shrink-0 shadow-md shadow-emerald-950/20"
+                  >
+                    <Plus className="w-4 h-4" /> Add Course
+                  </button>
+                </div>
               </div>
 
+              {/* Logged Courses List */}
               <div className="space-y-3 pt-2">
                 {profile.completedCourses?.map((course) => (
                   <div key={course.id} className="p-4 rounded-2xl bg-secondary/40 border border-border/60 flex items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                           {course.platform}
                         </span>
                         <span className="text-xs font-bold text-foreground">{course.title}</span>
                       </div>
-                      <div className="text-[10px] text-muted-foreground mt-1">Completed: {course.dateCompleted}</div>
+                      <div className="text-[10px] text-muted-foreground mt-1 font-mono">Completed: {course.dateCompleted}</div>
                     </div>
                     <button
                       onClick={() => handleRemoveCourse(course.id)}
