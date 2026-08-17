@@ -95,6 +95,12 @@ export interface MilestoneQuiz {
   questions: QuizQuestion[];
 }
 
+export interface WeeklyModule {
+  week: string;
+  title: string;
+  description: string;
+}
+
 export interface LearningPhase {
   step: number;
   title: string;
@@ -104,6 +110,10 @@ export interface LearningPhase {
   prerequisites: string[];
   topics: string[];
   projectIdea: string;
+  weeklyBreakdown?: WeeklyModule[];
+  codeExercise?: string;
+  interviewFocus?: string[];
+  recommendedBooks?: string[];
   recommendedCourseId?: string;
   quiz?: MilestoneQuiz;
 }

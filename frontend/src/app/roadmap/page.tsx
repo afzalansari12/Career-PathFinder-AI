@@ -580,10 +580,32 @@ export default function LearningPathPage() {
                             </div>
                           )}
 
+                          {/* Weekly Modules Breakdown */}
+                          {current.weeklyBreakdown && current.weeklyBreakdown.length > 0 && (
+                            <div className="space-y-2">
+                              <h4 className="font-mono uppercase text-[11px] text-muted-foreground flex items-center gap-1.5 font-bold">
+                                <Clock className="w-3.5 h-3.5 text-emerald-400" /> Weekly Modules Breakdown
+                              </h4>
+                              <div className="space-y-2">
+                                {current.weeklyBreakdown.map((w, idx) => (
+                                  <div key={idx} className="p-3 rounded-xl bg-secondary/50 border border-border/60 space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                        {w.week}
+                                      </span>
+                                      <span className="text-[11px] font-bold text-foreground">{w.title}</span>
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">{w.description}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           {/* Topics */}
                           <div className="space-y-2">
                             <h4 className="font-mono uppercase text-[11px] text-muted-foreground flex items-center gap-1.5 font-bold">
-                              <BookOpen className="w-3.5 h-3.5 text-emerald-400" /> Key Topics to Master
+                              <BookOpen className="w-3.5 h-3.5 text-emerald-400" /> Key Topics & Architecture
                             </h4>
                             <div className="space-y-1.5">
                               {current.topics?.map((topic, i) => (
@@ -597,6 +619,51 @@ export default function LearningPathPage() {
                               ))}
                             </div>
                           </div>
+
+                          {/* Hands-On Lab Code Exercise */}
+                          {current.codeExercise && (
+                            <div className="space-y-2">
+                              <h4 className="font-mono uppercase text-[11px] text-muted-foreground flex items-center gap-1.5 font-bold">
+                                <Code2 className="w-3.5 h-3.5 text-amber-400" /> Hands-On Code Lab Exercise
+                              </h4>
+                              <div className="p-3 rounded-xl bg-slate-950 font-mono text-[11px] text-amber-300 border border-amber-500/30 leading-relaxed shadow-inner">
+                                💬 <b className="text-white">Challenge: </b>{current.codeExercise}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* FAANG / Tech Interview Focus */}
+                          {current.interviewFocus && current.interviewFocus.length > 0 && (
+                            <div className="space-y-2">
+                              <h4 className="font-mono uppercase text-[11px] text-muted-foreground flex items-center gap-1.5 font-bold">
+                                <BrainCircuit className="w-3.5 h-3.5 text-purple-400" /> Interview Focus & Whiteboarding
+                              </h4>
+                              <ul className="space-y-1.5 bg-purple-500/10 p-3 rounded-xl border border-purple-500/20 text-[11px]">
+                                {current.interviewFocus.map((q, idx) => (
+                                  <li key={idx} className="flex items-start gap-1.5 text-foreground/90">
+                                    <Sparkles className="w-3 h-3 text-purple-400 shrink-0 mt-0.5" />
+                                    <span>{q}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Recommended Books */}
+                          {current.recommendedBooks && current.recommendedBooks.length > 0 && (
+                            <div className="space-y-1.5">
+                              <h4 className="font-mono uppercase text-[11px] text-muted-foreground font-bold">
+                                Recommended Books & RFC Docs
+                              </h4>
+                              <div className="flex flex-wrap gap-1.5">
+                                {current.recommendedBooks.map((b, idx) => (
+                                  <span key={idx} className="px-2.5 py-1 rounded-lg bg-card border border-border text-[10px] font-mono text-muted-foreground">
+                                    📚 {b}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
                           {/* Project Idea */}
                           <div className="space-y-2 pt-1">
