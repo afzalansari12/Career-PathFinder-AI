@@ -290,24 +290,57 @@ export default function LearningPathPage() {
                 </span>
               </label>
 
-              <div className="flex flex-col sm:flex-row gap-3">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (promptInput.trim()) handleNaturalLanguageConverse(promptInput.trim());
+                }}
+                className="flex flex-col sm:flex-row gap-3"
+              >
                 <input
                   type="text"
                   value={promptInput}
                   onChange={(e) => setPromptInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleNaturalLanguageConverse()}
                   placeholder="Type your target role (e.g. Software Engineer, AI Engineer) to generate dynamic paths..."
                   className="flex-1 bg-background border border-border/80 rounded-xl px-4 py-3 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition"
                 />
 
                 <button
-                  onClick={() => handleNaturalLanguageConverse()}
+                  type="submit"
                   disabled={generating || !promptInput.trim()}
                   className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:opacity-50 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl shadow-lg shadow-emerald-950/30 transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
                 >
                   {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Compass className="w-4 h-4" />}
                   {generating ? "Generating AI Path..." : "Generate AI Path"}
                 </button>
+              </form>
+
+              {/* Quick Mobile Target Role Pills */}
+              <div className="pt-1 flex border-t border-border/50 gap-2 overflow-x-auto no-scrollbar">
+                {[
+                  "Full Stack Engineer",
+                  "AI Engineer",
+                  "Frontend Engineer",
+                  "DevOps Architect",
+                  "Data Scientist",
+                  "Mobile Developer",
+                ].map((presetRole) => (
+                  <button
+                    key={presetRole}
+                    onClick={() => {
+                      setPromptInput(presetRole);
+                      handleNaturalLanguageConverse(presetRole);
+                    }}
+                    disabled={generating}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-mono font-bold border transition cursor-pointer shrink-0 ${
+                      profile.targetGoal === presetRole
+                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm"
+                        : "bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground border-border/60"
+                    }`}
+                  >
+                    ⚡ {presetRole}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
