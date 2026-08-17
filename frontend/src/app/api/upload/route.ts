@@ -71,33 +71,38 @@ export async function POST(req: Request) {
         const supabaseAdmin = getSupabaseAdmin();
         const fileName = `${userId}/${Date.now()}-${file.name || "resume.pdf"}`;
 
-        const arrayBuffer = await file.arrayBuffer().catch(() => new ArrayBuffer(0));
-        const buffer = Buffer.from(arrayBuffer);
-
-        if (buffer.length > 0) {
-          await supabaseAdmin.storage
-            .from("resumes")
-            .upload(fileName, buffer, { upsert: true, contentType: "application/pdf" })
-            .catch((e) => console.warn("Supabase storage upload skipped:", e));
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          if (buffer.length > 0) {
+            await supabaseAdmin.storage
+              .from("resumes")
+              .upload(fileName, buffer, { upsert: true, contentType: "application/pdf" });
+          }
+        } catch (storageErr) {
+          console.warn("Supabase storage upload skipped:", storageErr);
         }
 
-        await supabaseAdmin
-          .from("ats_evaluations")
-          .insert({
-            user_id: userId,
-            resume_url: fileName,
-            target_role: "Matched Job Description",
-            overall_score: evaluation.overallScore,
-            breakdown: evaluation.breakdown,
-            deductions: evaluation.deductions,
-            detected_skills: evaluation.detectedSkills,
-            missing_skills: evaluation.missingSkills,
-            metrics: evaluation.metrics,
-            ai_summary: feedback.summary,
-            ai_strengths: feedback.strengths,
-            ai_improvements: feedback.improvements,
-          })
-          .catch((e) => console.warn("Supabase db insert skipped:", e));
+        try {
+          await supabaseAdmin
+            .from("ats_evaluations")
+            .insert({
+              user_id: userId,
+              resume_url: fileName,
+              target_role: "Matched Job Description",
+              overall_score: evaluation.overallScore,
+              breakdown: evaluation.breakdown,
+              deductions: evaluation.deductions,
+              detected_skills: evaluation.detectedSkills,
+              missing_skills: evaluation.missingSkills,
+              metrics: evaluation.metrics,
+              ai_summary: feedback.summary,
+              ai_strengths: feedback.strengths,
+              ai_improvements: feedback.improvements,
+            });
+        } catch (dbInsertErr) {
+          console.warn("Supabase db insert skipped:", dbInsertErr);
+        }
       } catch (dbErr) {
         console.warn("Supabase logging warning:", dbErr);
       }

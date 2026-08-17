@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
             updated_at: new Date().toISOString(),
           },
           { onConflict: "clerk_id" }
-        ).catch((e) => console.warn("Supabase upsert warning:", e));
+        );
       } catch (dbErr) {
         console.warn("Supabase profile update warning:", dbErr);
       }
