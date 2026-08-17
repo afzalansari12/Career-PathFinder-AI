@@ -302,13 +302,27 @@ export default function JobsPage() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground font-medium pt-1">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-blue-400" /> {job.location}
-                      </span>
-                      <span className="flex items-center gap-1 font-mono font-bold text-foreground">
-                        <DollarSign className="w-3.5 h-3.5 text-amber-400" /> {job.salary}
-                      </span>
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40">
+                      <div className="flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground font-medium">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" /> {job.location}
+                        </span>
+                        <span className="flex items-center gap-1 font-mono font-bold text-foreground">
+                          <DollarSign className="w-3.5 h-3.5 text-amber-400 shrink-0" /> {job.salary}
+                        </span>
+                      </div>
+
+                      {/* Mobile & Desktop Quick Apply Link in bottom right corner */}
+                      <a
+                        href={job.applyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-md shadow-emerald-950/30 transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+                      >
+                        <span>Apply</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
                     </div>
 
                     {job.matchedSkills && (
