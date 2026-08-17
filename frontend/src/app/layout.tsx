@@ -1,5 +1,5 @@
 // frontend/src/app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
@@ -9,6 +9,13 @@ export const metadata: Metadata = {
   description: "AI-driven ATS optimization, interview preparation, and job matching.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -16,8 +23,8 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body>
+      <html lang="en" className="overflow-x-hidden">
+        <body className="overflow-x-hidden w-full max-w-full bg-background text-foreground font-sans antialiased">
           {children}
           {/* Razorpay Checkout SDK */}
           <Script
