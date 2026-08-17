@@ -48,6 +48,7 @@ import {
   getRoleTailoredRecommendations,
   getRoleTargetSkills,
   calculateSkillGaps,
+  generateClientLearningPath,
 } from "@/lib/learningPathEngine";
 import SkillRadarChart from "@/components/learning/SkillRadarChart";
 import RecommendationExplainerModal from "@/components/learning/RecommendationExplainerModal";
@@ -113,11 +114,15 @@ export default function LearningPathPage() {
     setProfile(p);
 
     const currentStoredPath = loadStoredLearningPath();
-    if (currentStoredPath) {
+    if (currentStoredPath && currentStoredPath.targetRole === p.targetGoal) {
       setLearningPath(currentStoredPath);
     } else {
+      const initialPath = generateClientLearningPath(p.targetGoal || "Software Engineer", p.preferences.hoursPerWeek, p.preferences.pace);
+      setLearningPath(initialPath);
+      saveStoredLearningPath(initialPath);
+
       safeFetchJson("/api/learning-path/generate", { profile: p }).then((data) => {
-        if (data && data.path) {
+        if (data && data.path && data.path.phases && data.path.phases.length > 0) {
           setLearningPath(data.path);
           saveStoredLearningPath(data.path);
         }
@@ -146,10 +151,12 @@ export default function LearningPathPage() {
         updatedTargetRole = "Frontend Engineer";
       } else if (query.toLowerCase().includes("data")) {
         updatedTargetRole = "Data Scientist";
-      } else if (query.toLowerCase().includes("ai") || query.toLowerCase().includes("machine learning")) {
+      } else if (query.toLowerCase().includes("ai") || query.toLowerCase().includes("machine learning") || query.toLowerCase().includes("ml")) {
         updatedTargetRole = "AI Engineer";
-      } else if (query.toLowerCase().includes("devops") || query.toLowerCase().includes("cloud")) {
+      } else if (query.toLowerCase().includes("devops") || query.toLowerCase().includes("cloud") || query.toLowerCase().includes("sre")) {
         updatedTargetRole = "DevOps Architect";
+      } else if (query.toLowerCase().includes("mobile") || query.toLowerCase().includes("android") || query.toLowerCase().includes("ios")) {
+        updatedTargetRole = "Mobile Developer";
       } else {
         updatedTargetRole = query.trim();
       }
@@ -171,11 +178,25 @@ export default function LearningPathPage() {
       setProfile(updatedProfile);
       saveStoredProfile(updatedProfile);
 
-      // Call generate API
-      const data = await safeFetchJson("/api/learning-path/generate", { profile: updatedProfile });
-      if (data && data.path) {
-        setLearningPath(data.path);
-        saveStoredLearningPath(data.path);
+      // 1. Immediately set domain-specific client path for zero-latency UI transition
+      const clientPath = generateClientLearningPath(
+        updatedTargetRole,
+        updatedProfile.preferences.hoursPerWeek,
+        updatedProfile.preferences.pace
+      );
+      setLearningPath(clientPath);
+      saveStoredLearningPath(clientPath);
+      setActiveStep(1);
+
+      // 2. Call generate API asynchronously to enrich with server AI response if available
+      try {
+        const data = await safeFetchJson("/api/learning-path/generate", { profile: updatedProfile });
+        if (data && data.path && data.path.phases && data.path.phases.length > 0) {
+          setLearningPath(data.path);
+          saveStoredLearningPath(data.path);
+        }
+      } catch (e) {
+        console.warn("Server path generation warning, using client path:", e);
       }
 
       setGenerating(false);
