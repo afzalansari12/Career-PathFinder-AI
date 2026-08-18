@@ -1,31 +1,40 @@
 // frontend/src/app/page.tsx
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
+import { isUserSignedUp, markUserSignedUp } from "@/lib/authTracking";
 import {
   Sparkles,
-  FileText,
-  Target,
-  Briefcase,
-  Video,
-  Bot,
-  ArrowRight,
   CheckCircle2,
   LogIn,
+  UserPlus,
   Zap,
+  ArrowRight,
 } from "lucide-react";
 
 export default function LandingPage() {
   const { isSignedIn } = useAuth();
+  const [hasSignedUp, setHasSignedUp] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    if (isSignedIn) {
+      markUserSignedUp();
+      setHasSignedUp(true);
+    } else {
+      setHasSignedUp(isUserSignedUp());
+    }
+  }, [isSignedIn]);
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans antialiased overflow-x-hidden selection:bg-emerald-500/30">
       {/* Glow Ambient Background Blur */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[500px] bg-gradient-to-b from-emerald-500/10 via-emerald-500/5 to-transparent blur-3xl pointer-events-none" />
 
-      {/* Top Navbar - Fully Mobile Responsive */}
+      {/* Top Navbar */}
       <nav className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold border border-emerald-500/30 shadow-lg shadow-emerald-950/40 text-sm sm:text-base">
@@ -53,19 +62,44 @@ export default function LandingPage() {
                 <Zap className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Demo</span>
               </Link>
-              <Link
-                href="/sign-in"
-                className="bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-xs px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-border transition flex items-center gap-1.5 shrink-0"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span className="whitespace-nowrap">Sign In</span>
-              </Link>
-              <Link
-                href="/sign-up"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl shadow-lg shadow-emerald-900/30 transition flex items-center gap-1.5 shrink-0"
-              >
-                <span className="whitespace-nowrap">Sign Up</span>
-              </Link>
+
+              {/* Dynamic Auth Buttons: If user has previously signed up, show Sign In as primary */}
+              {isMounted && hasSignedUp ? (
+                <>
+                  <Link
+                    href="/sign-up"
+                    className="bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-xs px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-border transition flex items-center gap-1.5 shrink-0"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span className="whitespace-nowrap">Sign Up</span>
+                  </Link>
+                  <Link
+                    href="/sign-in"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-lg shadow-emerald-900/30 transition flex items-center gap-1.5 shrink-0"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span className="whitespace-nowrap">Sign In</span>
+                  </Link>
+                </>
+              ) : (
+                /* First Time User -> Sign Up is primary action */
+                <>
+                  <Link
+                    href="/sign-in"
+                    className="bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-xs px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-border transition flex items-center gap-1.5 shrink-0"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span className="whitespace-nowrap">Sign In</span>
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-lg shadow-emerald-900/30 transition flex items-center gap-1.5 shrink-0"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span className="whitespace-nowrap">Sign Up</span>
+                  </Link>
+                </>
+              )}
             </>
           )}
         </div>
@@ -95,12 +129,23 @@ export default function LandingPage() {
           >
             <Zap className="w-4 h-4" /> Try Instant Demo Dashboard
           </Link>
-          <Link
-            href="/sign-in"
-            className="w-full sm:w-auto bg-secondary/80 hover:bg-secondary text-secondary-foreground font-semibold text-xs sm:text-sm px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border border-border transition flex items-center justify-center gap-2"
-          >
-            <LogIn className="w-4 h-4" /> Sign In / Create Account
-          </Link>
+
+          {/* Hero Auth CTA depending on whether user has previously signed up */}
+          {isMounted && hasSignedUp ? (
+            <Link
+              href="/sign-in"
+              className="w-full sm:w-auto bg-secondary/80 hover:bg-secondary text-secondary-foreground font-semibold text-xs sm:text-sm px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border border-border transition flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4 text-emerald-400" /> Sign In to Your Account
+            </Link>
+          ) : (
+            <Link
+              href="/sign-up"
+              className="w-full sm:w-auto bg-secondary/80 hover:bg-secondary text-secondary-foreground font-semibold text-xs sm:text-sm px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border border-border transition flex items-center justify-center gap-2"
+            >
+              <UserPlus className="w-4 h-4 text-emerald-400" /> First Time? Create Account (Sign Up)
+            </Link>
+          )}
         </div>
 
         {/* Feature Badges Grid */}

@@ -27,7 +27,11 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (!userId) {
-    return (await auth()).redirectToSignIn();
+    const hasSignedUp = req.cookies.get("has_signed_up")?.value === "true";
+    const redirectTarget = hasSignedUp ? "/sign-in" : "/sign-up";
+    const targetUrl = new URL(redirectTarget, req.url);
+    targetUrl.searchParams.set("redirect_url", req.url);
+    return NextResponse.redirect(targetUrl);
   }
 });
 

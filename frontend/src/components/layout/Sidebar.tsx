@@ -8,6 +8,7 @@ import { UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import UpgradeProModal from "@/components/pro/UpgradeProModal";
 import { getProStatus } from "@/lib/proStatus";
+import { markUserSignedUp } from "@/lib/authTracking";
 import {
   LayoutDashboard,
   FileText,
@@ -71,9 +72,12 @@ export default function Sidebar() {
 
   useEffect(() => {
     checkProStatus();
+    if (user) {
+      markUserSignedUp();
+    }
     window.addEventListener("pro_status_updated", checkProStatus);
     return () => window.removeEventListener("pro_status_updated", checkProStatus);
-  }, [userId]);
+  }, [userId, user]);
 
   const NavContent = () => (
     <div className="space-y-6">

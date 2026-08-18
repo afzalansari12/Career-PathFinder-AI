@@ -1,8 +1,19 @@
-import { SignUp } from "@clerk/nextjs";
+"use client";
+
+import { useEffect } from "react";
+import { SignUp, useAuth } from "@clerk/nextjs";
 import { Sparkles, CheckCircle2, Zap, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { markUserSignedUp } from "@/lib/authTracking";
 
 export default function SignUpPage() {
+  const { isSignedIn } = useAuth();
+
+  useEffect(() => {
+    if (isSignedIn) {
+      markUserSignedUp();
+    }
+  }, [isSignedIn]);
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col justify-center items-center p-4 relative overflow-hidden selection:bg-emerald-500/30">
       {/* Background Ambient Glow */}
