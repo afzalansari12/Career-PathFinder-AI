@@ -48,17 +48,23 @@ export default function LandingPage() {
             <>
               <Link
                 href="/dashboard?demo=true"
-                className="bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-xs px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-border transition flex items-center gap-1 shrink-0"
+                className="bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-xs px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl border border-border transition flex items-center gap-1 shrink-0"
               >
                 <Zap className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Demo</span>
               </Link>
               <Link
                 href="/sign-in"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-lg shadow-emerald-900/30 transition flex items-center gap-1.5 shrink-0"
+                className="bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-xs px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-border transition flex items-center gap-1.5 shrink-0"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 <span className="whitespace-nowrap">Sign In</span>
+              </Link>
+              <Link
+                href="/sign-up"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl shadow-lg shadow-emerald-900/30 transition flex items-center gap-1.5 shrink-0"
+              >
+                <span className="whitespace-nowrap">Sign Up</span>
               </Link>
             </>
           )}
