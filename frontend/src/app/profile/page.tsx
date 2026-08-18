@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import AppShell from "@/components/layout/AppShell";
 import UpgradeProModal from "@/components/pro/UpgradeProModal";
+import DeleteAccountSection from "@/components/account/DeleteAccountSection";
 import { getProStatus } from "@/lib/proStatus";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -533,6 +534,9 @@ export default function ProfilePage() {
                 ))}
               </div>
             </div>
+
+            {/* Danger Zone: Delete Account */}
+            <DeleteAccountSection />
           </div>
         </div>
       </div>
